@@ -1,0 +1,55 @@
+import { HealthStatus } from '../types';
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8787';
+
+export async function checkApiHealth(): Promise<HealthStatus> {
+  try {
+    const res = await fetch(`${API_BASE}/api/health`, { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return { ok: false, aiConfigured: false };
+    return (await res.json()) as HealthStatus;
+  } catch {
+    return { ok: false, aiConfigured: false };
+  }
+}
+
+export interface IdentificationResponse {
+  name: string;
+  scientificName: string;
+  category: string;
+  rarity: string;
+  confidence: string;
+  description: string;
+  facts: string[];
+  modelUsed?: string;
+  isAiGenerated?: boolean;
+  aiGenerationReason?: string;
+  error?: string;
+}
+
+export async function identifySpecimen(
+  file: File,
+  coords?: { latitude: number; longitude: number },
+  theme?: string
+): Promise<IdentificationResponse> {
+  const form = new FormData();
+  form.append('image', file);
+  if (coords) {
+    form.append('latitude', String(coords.latitude));
+    form.append('longitude', String(coords.longitude));
+  }
+  if (theme) {
+    form.append('theme', theme);
+  }
+
+  const response = await fetch(`${API_BASE}/api/identify`, {
+    method: 'POST',
+    body: form,
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || 'Identification failed. Please try another image.');
+  }
+
+  return data as IdentificationResponse;
+}
