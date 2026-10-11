@@ -1,10 +1,10 @@
 import { useState, type FC, type MouseEvent } from 'react';
-import { Camera, Leaf, Search, Trash2, Bot, Sparkles, UserPlus, Cloud, CheckCircle2 } from 'lucide-react';
+import { Camera, Leaf, Search, Trash2, Bot, Sparkles, UserPlus, Cloud, CheckCircle2, HelpCircle } from 'lucide-react';
 import { Discovery, UserProfile } from '../types';
-import { TaxonomyBar } from './TaxonomyBar';
+import { TaxonomyBar } from '../components/TaxonomyBar';
 import { soundEngine } from '../services/sound';
 
-interface CollectionDexViewProps {
+interface DexPageProps {
   cards: Discovery[];
   sampleCards: Discovery[];
   user: UserProfile | null;
@@ -14,7 +14,7 @@ interface CollectionDexViewProps {
   onOpenAuth: () => void;
 }
 
-export const CollectionDexView: FC<CollectionDexViewProps> = ({
+export const DexPage: FC<DexPageProps> = ({
   cards,
   sampleCards,
   user,
@@ -98,35 +98,33 @@ export const CollectionDexView: FC<CollectionDexViewProps> = ({
       {/* Search Bar */}
       <div className="dex-filter-row">
         <label className="search-box dex-search">
-          <Search size={16} />
+          <Search size={14} />
           <input
+            type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search cards by species, category, or notes…"
+            placeholder="Search specimen by common or Latin name…"
             aria-label="Search collection"
           />
         </label>
       </div>
 
-      {/* Category Deep-Dive Taxonomy Bar */}
+      {/* Taxonomy Category Filter Bar */}
       <TaxonomyBar
         selectedCategory={selectedCategory}
-        onSelectCategory={(cat) => {
-          soundEngine.playBeep(920, 0.04);
-          setSelectedCategory(cat);
-        }}
+        onSelectCategory={setSelectedCategory}
         cards={cards}
       />
 
       {/* Cards Grid */}
       {cards.length === 0 ? (
-        <div className="empty-state dex-empty">
+        <div className="empty-state">
           <div className="empty-symbol">
-            <Leaf size={38} />
+            <Leaf size={32} />
           </div>
-          <h3>Your Field Dex is waiting.</h3>
+          <h3>Field Dex is Ready</h3>
           <p>
-            You haven't recorded any discoveries yet. Tap below to launch your camera and identify your first tree, sunset, waterfall, or insect!
+            You haven't recorded any flora, fauna, or landscape discoveries yet. Launch the field scanner to register your first specimen!
           </p>
           <button
             className="button primary"
@@ -153,7 +151,10 @@ export const CollectionDexView: FC<CollectionDexViewProps> = ({
                 <img src={card.image} alt={card.name} />
                 <span>{card.category}</span>
                 <b>{card.name}</b>
-                <small>✦ {card.rarity} · Preview in 3D →</small>
+                <small>
+                  <Sparkles size={9} style={{ display: 'inline', marginRight: '4px' }} />
+                  {card.rarity} · Preview in 3D →
+                </small>
               </button>
             ))}
           </div>
@@ -192,7 +193,9 @@ export const CollectionDexView: FC<CollectionDexViewProps> = ({
                       <Bot size={10} /> AI
                     </span>
                   )}
-                  <span className="dex-rarity-chip">✦ {card.rarity}</span>
+                  <span className="dex-rarity-chip">
+                    <Sparkles size={9} /> {card.rarity}
+                  </span>
                 </div>
 
                 <div className="dex-card-body">
@@ -215,8 +218,29 @@ export const CollectionDexView: FC<CollectionDexViewProps> = ({
               </div>
             </div>
           ))}
+
+          {/* Locked Mystery Specimen Card Slot (Reference Screen 5) */}
+          <div
+            className="dex-card-item mystery-slot-card"
+            onClick={() => {
+              soundEngine.playBeep(900, 0.04);
+              onGoToScanner();
+            }}
+            title="Launch scanner to discover new species"
+          >
+            <div className="dex-card-inner mystery-card-inner">
+              <div className="mystery-badge-ring">
+                <HelpCircle size={28} />
+              </div>
+              <b className="mystery-card-title">Undiscovered Specimen</b>
+              <small className="mystery-card-action">+ Tap to scan in nature</small>
+            </div>
+          </div>
         </div>
       )}
     </div>
   );
 };
+
+// Aliased export for compatibility
+export { DexPage as CollectionDexView };

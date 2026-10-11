@@ -1,15 +1,15 @@
 // Weather interpretation helper based on WMO weather codes
 function interpretWeatherCode(code: number): string {
-  if (code === 0) return '☀️ Clear sky';
-  if (code === 1 || code === 2) return '🌤️ Partly cloudy';
-  if (code === 3) return '☁️ Overcast';
-  if (code >= 45 && code <= 48) return '🌫️ Foggy conditions';
-  if (code >= 51 && code <= 55) return '🌦️ Light drizzle';
-  if (code >= 61 && code <= 65) return '🌧️ Rain showers';
-  if (code >= 71 && code <= 77) return '❄️ Snowfall';
-  if (code >= 80 && code <= 82) return '🌧️ Heavy showers';
-  if (code >= 95) return '⛈️ Thunderstorm';
-  return '🍃 Gentle breeze';
+  if (code === 0) return 'Clear Sky';
+  if (code === 1 || code === 2) return 'Partly Cloudy';
+  if (code === 3) return 'Overcast';
+  if (code >= 45 && code <= 48) return 'Foggy Atmosphere';
+  if (code >= 51 && code <= 55) return 'Light Drizzle';
+  if (code >= 61 && code <= 65) return 'Rain Showers';
+  if (code >= 71 && code <= 77) return 'Snow Flurries';
+  if (code >= 80 && code <= 82) return 'Heavy Showers';
+  if (code >= 95) return 'Thunderstorm';
+  return 'Gentle Breeze';
 }
 
 export async function fetchWeatherInfo(latitude: number, longitude: number): Promise<string> {

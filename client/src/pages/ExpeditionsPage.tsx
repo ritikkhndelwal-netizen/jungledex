@@ -1,10 +1,10 @@
 import type { FC } from 'react';
-import { Footprints, Navigation, Sparkles, Compass, CheckCircle2, Award, Camera } from 'lucide-react';
+import { Footprints, Navigation, Sparkles, Compass, CheckCircle2, Award, Camera, Crosshair, Trophy, Sun, Waves, Leaf, Bug } from 'lucide-react';
 import { ExpeditionStats, calculateLevel } from '../services/expeditions';
 import { Quest } from '../types';
 import { soundEngine } from '../services/sound';
 
-interface ExpeditionsViewProps {
+interface ExpeditionsPageProps {
   stats: ExpeditionStats;
   quests: Quest[];
   activeTargetName?: string;
@@ -14,7 +14,7 @@ interface ExpeditionsViewProps {
   onGoToScanner: () => void;
 }
 
-export const ExpeditionsView: FC<ExpeditionsViewProps> = ({
+export const ExpeditionsPage: FC<ExpeditionsPageProps> = ({
   stats,
   quests,
   activeTargetName,
@@ -52,7 +52,10 @@ export const ExpeditionsView: FC<ExpeditionsViewProps> = ({
         <div className="active-target-banner">
           <div>
             <span className="target-label">ACTIVE EXPEDITION GOAL</span>
-            <b>🎯 Seeking: {activeTargetName}</b>
+            <b>
+              <Crosshair size={13} style={{ display: 'inline', marginRight: '5px' }} />
+              Seeking: {activeTargetName}
+            </b>
           </div>
           <button className="text-button" onClick={onClearTarget}>
             Dismiss
@@ -127,7 +130,8 @@ export const ExpeditionsView: FC<ExpeditionsViewProps> = ({
             <div className="badge-chips">
               {stats.unlockedBadges.map((badge) => (
                 <span className="badge-chip" key={badge}>
-                  🏆 {badge}
+                  <Trophy size={11} style={{ display: 'inline', marginRight: '4px' }} />
+                  {badge}
                 </span>
               ))}
             </div>
@@ -160,7 +164,13 @@ export const ExpeditionsView: FC<ExpeditionsViewProps> = ({
               className={`quest-card-item ${quest.completed ? 'completed' : ''}`}
             >
               <div className="quest-card-left">
-                <span className="quest-emoji">{quest.icon}</span>
+                <span className="quest-emoji">
+                  {quest.icon === 'sun' && <Sun size={20} />}
+                  {quest.icon === 'waves' && <Waves size={20} />}
+                  {quest.icon === 'leaf' && <Leaf size={20} />}
+                  {quest.icon === 'bug' && <Bug size={20} />}
+                  {quest.icon === 'compass' && <Compass size={20} />}
+                </span>
                 <div className="quest-details">
                   <b>{quest.title}</b>
                   <p>{quest.description}</p>
@@ -209,3 +219,6 @@ export const ExpeditionsView: FC<ExpeditionsViewProps> = ({
     </div>
   );
 };
+
+// Aliased export for compatibility
+export { ExpeditionsPage as ExpeditionsView };

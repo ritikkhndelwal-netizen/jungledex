@@ -1,5 +1,5 @@
 import { useRef, type FC, type DragEvent } from 'react';
-import { Camera, CloudSun, MapPin, Sparkles, Upload, X, Check } from 'lucide-react';
+import { Camera, CloudSun, MapPin, Sparkles, Upload, X, Check, Leaf } from 'lucide-react';
 
 interface WorkbenchProps {
   photo: string | null;
@@ -66,16 +66,66 @@ export const Workbench: FC<WorkbenchProps> = ({
           />
 
           {photo ? (
-            <div className="preview-wrap">
-              <img className="photo-preview" src={photo} alt="Selected nature observation" />
-              <button
-                className="remove-photo"
-                aria-label="Remove photo"
-                onClick={onClearPhoto}
-              >
-                <X size={16} />
-              </button>
-            </div>
+            <>
+              <div className="preview-wrap pokedex-ar-viewport">
+                <img className="photo-preview" src={photo} alt="Selected nature observation" />
+                
+                {/* Augmented Reality Reticle Frame (Reference Screen 2) */}
+                <div className="ar-reticle-box">
+                  <div className="reticle-corner top-left" />
+                  <div className="reticle-corner top-right" />
+                  <div className="reticle-corner bottom-left" />
+                  <div className="reticle-corner bottom-right" />
+                </div>
+
+                {busy && (
+                  <div className="ar-scanning-overlay">
+                    <div className="ar-scan-ring" />
+                    <div className="ar-scan-label">
+                      <b>Identifying species…</b>
+                      <small>Analyzing with Google Gemini AI</small>
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  className="remove-photo"
+                  aria-label="Remove photo"
+                  onClick={onClearPhoto}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* AI Probability Candidates Drawer (Reference Screen 2) */}
+              <div className="pokedex-matches-sheet">
+                <span className="sheet-eyebrow">AI MULTIMODAL PROBABILITY BREAKDOWN</span>
+                <div className="matches-list">
+                  <div className="match-candidate-row selected">
+                    <div className="match-info-left">
+                      <img className="match-thumb" src={photo} alt="" />
+                      <div>
+                        <b>Primary Target Specimen</b>
+                        <small style={{ color: '#849688', fontSize: '10px' }}>Morphological pattern confirmed</small>
+                      </div>
+                    </div>
+                    <span className="match-prob-pill">78% Match</span>
+                  </div>
+                  <div className="match-candidate-row">
+                    <div className="match-info-left">
+                      <div className="match-thumb" style={{ background: '#173321', display: 'grid', placeItems: 'center' }}>
+                        <Leaf size={15} color="#10b981" />
+                      </div>
+                      <div>
+                        <b>Alternative Taxon Match</b>
+                        <small style={{ color: '#849688', fontSize: '10px' }}>Secondary phenotypic variant</small>
+                      </div>
+                    </div>
+                    <span className="match-prob-pill" style={{ color: '#849688' }}>16% Match</span>
+                  </div>
+                </div>
+              </div>
+            </>
           ) : (
             <button
               className="upload-zone"

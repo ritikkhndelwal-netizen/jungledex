@@ -2,7 +2,7 @@ import type { FC } from 'react';
 import { Leaf, Camera, Radar, Trophy, Home } from 'lucide-react';
 import { soundEngine } from '../services/sound';
 
-export type ActiveView = 'landing' | 'collection' | 'scanner' | 'radar' | 'expeditions';
+export type ActiveView = 'landing' | 'collection' | 'scanner' | 'radar' | 'expeditions' | 'card-detail';
 
 interface BottomNavProps {
   activeView: ActiveView;
@@ -26,19 +26,19 @@ export const BottomNav: FC<BottomNavProps> = ({
       <button
         className={`bottom-nav-item ${activeView === 'landing' ? 'active' : ''}`}
         onClick={() => handleNav('landing')}
-        aria-label="Home Landing"
+        aria-label="Home Terminal"
       >
-        <Home size={19} />
+        <Home size={18} />
         <span>Home</span>
       </button>
 
       <button
-        className={`bottom-nav-item ${activeView === 'collection' ? 'active' : ''}`}
+        className={`bottom-nav-item ${activeView === 'collection' || activeView === 'card-detail' ? 'active' : ''}`}
         onClick={() => handleNav('collection')}
         aria-label="Card Collection Dex"
       >
         <div className="nav-icon-wrap">
-          <Leaf size={19} />
+          <Leaf size={18} />
           {cardsCount > 0 && <span className="nav-badge">{cardsCount}</span>}
         </div>
         <span>Dex</span>
@@ -61,7 +61,7 @@ export const BottomNav: FC<BottomNavProps> = ({
         onClick={() => handleNav('radar')}
         aria-label="Nature Radar"
       >
-        <Radar size={19} />
+        <Radar size={18} />
         <span>Radar</span>
       </button>
 
@@ -70,7 +70,7 @@ export const BottomNav: FC<BottomNavProps> = ({
         onClick={() => handleNav('expeditions')}
         aria-label="Expeditions & Quests"
       >
-        <Trophy size={19} />
+        <Trophy size={18} />
         <span>Quests</span>
       </button>
     </nav>

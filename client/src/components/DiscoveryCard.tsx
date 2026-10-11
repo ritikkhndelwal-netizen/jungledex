@@ -1,5 +1,5 @@
 import { forwardRef, useState, type MouseEvent } from 'react';
-import { MapPin, Sparkles, Bot, AlertTriangle } from 'lucide-react';
+import { MapPin, Sparkles, Bot, AlertTriangle, Compass, Ruler, Calendar } from 'lucide-react';
 import { Discovery } from '../types';
 
 interface DiscoveryCardProps {
@@ -85,14 +85,55 @@ export const DiscoveryCard = forwardRef<HTMLDivElement, DiscoveryCardProps>(
               <i className="scientific">{card.scientificName}</i>
             )}
 
+            {/* 2x2 Key Attributes Bento Grid (Reference Screen 3) */}
+            <div className="pokedex-attributes-bento">
+              <div className="attribute-cell">
+                <small className="attr-label">
+                  <Ruler size={10} /> Length / Scale
+                </small>
+                <b>
+                  {card.category.includes('Insect')
+                    ? '70–80 mm'
+                    : card.category.includes('Bird')
+                    ? '35–45 cm'
+                    : card.category.includes('Flora')
+                    ? '15–30 cm'
+                    : 'Panoramic Vista'}
+                </b>
+              </div>
+              <div className="attribute-cell">
+                <small className="attr-label">
+                  <Sparkles size={10} /> Rarity Class
+                </small>
+                <b>{card.rarity}</b>
+              </div>
+              <div className="attribute-cell">
+                <small className="attr-label">
+                  <Compass size={10} /> Habitat
+                </small>
+                <b>{card.location ? card.location.split(',')[0] : 'Gardens & Wilds'}</b>
+              </div>
+              <div className="attribute-cell">
+                <small className="attr-label">
+                  <Calendar size={10} /> Peak Season
+                </small>
+                <b>Mar – Nov</b>
+              </div>
+            </div>
+
             <p>{card.description}</p>
 
             {card.facts && card.facts.length > 0 && (
-              <ul>
-                {card.facts.map((fact, i) => (
-                  <li key={i}>{fact}</li>
-                ))}
-              </ul>
+              <div className="specimen-fun-facts">
+                <h5>
+                  <Sparkles size={12} /> Specimen Field Notes
+                </h5>
+                <ul>
+                  {card.facts.map((fact, i) => (
+                    <li key={i}>{fact}</li>
+                  ))}
+                </ul>
+              </div>
             )}
 
             {card.isAiGenerated && card.aiGenerationReason && (
@@ -112,7 +153,7 @@ export const DiscoveryCard = forwardRef<HTMLDivElement, DiscoveryCardProps>(
 
             <div className="card-bottom">
               <span>{card.date}</span>
-              <span>KEEP EXPLORING ✳</span>
+              <span className="card-status-archive">ARCHIVE SPECIMEN</span>
             </div>
           </div>
         </div>

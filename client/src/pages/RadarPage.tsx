@@ -1,9 +1,9 @@
 import { useState, type FC } from 'react';
-import { RefreshCw, Compass, Target, Sparkles, Filter } from 'lucide-react';
+import { RefreshCw, Compass, Target, Sparkles, Filter, Crosshair, Leaf } from 'lucide-react';
 import { RadarSpecimen } from '../types';
 import { soundEngine } from '../services/sound';
 
-interface RadarViewProps {
+interface RadarPageProps {
   specimens: RadarSpecimen[];
   loading: boolean;
   userCoords?: { latitude: number; longitude: number } | null;
@@ -13,7 +13,7 @@ interface RadarViewProps {
   onClearTarget: () => void;
 }
 
-export const RadarView: FC<RadarViewProps> = ({
+export const RadarPage: FC<RadarPageProps> = ({
   specimens,
   loading,
   activeTargetName,
@@ -57,7 +57,10 @@ export const RadarView: FC<RadarViewProps> = ({
         <div className="radar-active-target-bar">
           <div>
             <span className="target-eyebrow">ACTIVE EXPEDITION GOAL</span>
-            <b>🎯 Seeking: {activeTargetName}</b>
+            <b>
+              <Crosshair size={13} style={{ display: 'inline', marginRight: '5px' }} />
+              Seeking: {activeTargetName}
+            </b>
           </div>
           <button className="text-button" onClick={onClearTarget}>
             Clear Target
@@ -138,7 +141,9 @@ export const RadarView: FC<RadarViewProps> = ({
                 {selectedSpecimen.photoUrl ? (
                   <img src={selectedSpecimen.photoUrl} alt={selectedSpecimen.commonName} />
                 ) : (
-                  <div className="no-thumb-box">🌿</div>
+                  <div className="no-thumb-box">
+                    <Leaf size={16} />
+                  </div>
                 )}
                 <div className="specimen-text">
                   <span className="specimen-taxon-tag">{selectedSpecimen.category}</span>
@@ -188,7 +193,9 @@ export const RadarView: FC<RadarViewProps> = ({
                 {specimen.photoUrl ? (
                   <img src={specimen.photoUrl} alt={specimen.commonName} />
                 ) : (
-                  <span>🌿</span>
+                  <div className="no-thumb-box micro">
+                    <Leaf size={13} />
+                  </div>
                 )}
               </div>
               <div className="sighting-details">
@@ -203,3 +210,6 @@ export const RadarView: FC<RadarViewProps> = ({
     </div>
   );
 };
+
+// Aliased export for compatibility
+export { RadarPage as RadarView };

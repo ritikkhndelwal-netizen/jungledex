@@ -53,14 +53,18 @@ export const Hero: FC<HeroProps> = ({ onTriggerIdentify }) => {
         </div>
         <div className="specimen specimen-two">
           <span>FIELD NOTE · 002</span>
-          <div className="mini-bug">✳</div>
+          <div className="mini-bug">
+            <Sparkles size={16} />
+          </div>
           <b>Every find tells a story.</b>
         </div>
         <div className="art-stamp">
           GO
           <br />
           WILD
-          <span>✳</span>
+          <span>
+            <Sparkles size={11} />
+          </span>
         </div>
         <div className="art-label label-bottom">
           <Compass size={15} /> LOOK CLOSER. WANDER FURTHER.

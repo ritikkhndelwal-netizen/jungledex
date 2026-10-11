@@ -21,12 +21,14 @@ import { soundEngine } from './services/sound';
 
 import { TopBar } from './components/TopBar';
 import { BottomNav, type ActiveView } from './components/BottomNav';
-import { LandingView } from './components/LandingView';
-import { CollectionDexView } from './components/CollectionDexView';
-import { ScannerView } from './components/ScannerView';
-import { RadarView } from './components/RadarView';
-import { ExpeditionsView } from './components/ExpeditionsView';
-import { ResultModal } from './components/ResultModal';
+import {
+  HomePage,
+  DexPage,
+  ScannerPage,
+  RadarPage,
+  ExpeditionsPage,
+  CardDetailPage,
+} from './pages';
 import { AuthModal } from './components/AuthModal';
 import { Toast } from './components/Toast';
 
@@ -119,6 +121,80 @@ export default function App() {
   const [weather, setWeather] = useState('Weather not loaded');
 
   const lastCoordsRef = useRef<{ latitude: number; longitude: number } | null>(null);
+
+  // Map internal views to friendly URL hashes for multi-page routing
+  const viewToHash = (v: ActiveView, cardId?: string): string => {
+    switch (v) {
+      case 'collection': return '#/dex';
+      case 'scanner': return '#/scan';
+      case 'radar': return '#/radar';
+      case 'expeditions': return '#/quests';
+      case 'card-detail': return cardId ? `#/card/${cardId}` : (selectedCard ? `#/card/${selectedCard.id}` : '#/dex');
+      default: return '#/home';
+    }
+  };
+
+  const hashToView = (hash: string): ActiveView => {
+    if (hash.startsWith('#/card/') || hash.includes('/card/')) return 'card-detail';
+    if (hash.includes('dex')) return 'collection';
+    if (hash.includes('scan')) return 'scanner';
+    if (hash.includes('radar')) return 'radar';
+    if (hash.includes('quest')) return 'expeditions';
+    return 'landing';
+  };
+
+  const changeView = (view: ActiveView) => {
+    if (view !== 'card-detail') {
+      setSelectedCard(null);
+    }
+    setActiveView(view);
+    const targetHash = viewToHash(view);
+    if (window.location.hash !== targetHash) {
+      window.location.hash = targetHash;
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const openCardDetail = (card: Discovery) => {
+    setSelectedCard(card);
+    setActiveView('card-detail');
+    const targetHash = `#/card/${card.id}`;
+    if (window.location.hash !== targetHash) {
+      window.location.hash = targetHash;
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const closeCardDetail = () => {
+    setSelectedCard(null);
+    changeView('collection');
+  };
+
+  // Synchronize browser history and hash navigation
+  useEffect(() => {
+    const handleHash = () => {
+      const hash = window.location.hash;
+      const v = hashToView(hash);
+      if (v === 'card-detail') {
+        const cardId = hash.replace(/^#\/card\//, '');
+        const allSpecimens = [...cards, ...SAMPLE_CARDS];
+        const match = allSpecimens.find((c) => c.id === cardId);
+        if (match) {
+          setSelectedCard(match);
+        }
+      }
+      setActiveView(v);
+    };
+
+    if (window.location.hash) {
+      handleHash();
+    } else {
+      window.location.hash = '#/home';
+    }
+
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, [cards]);
 
   // Initialize theme, cards from IndexedDB, API health, and Firebase Auth
   useEffect(() => {
@@ -218,7 +294,7 @@ export default function App() {
                     const currentVal = q.currentValue + delta;
                     if (currentVal >= Number(q.targetValue)) {
                       soundEngine.playFanfare();
-                      setToast(`🏆 Quest Complete: ${q.title}! (+${q.rewardXp} XP)`);
+                      setToast(`Quest Complete: ${q.title}! (+${q.rewardXp} XP)`);
                       return { ...q, currentValue: currentVal, completed: true };
                     }
                     return { ...q, currentValue: currentVal };
@@ -413,7 +489,7 @@ export default function App() {
                   ? [...s.unlockedBadges, q.badgeName]
                   : s.unlockedBadges,
               }));
-              setToast(`🏆 Quest Complete: ${q.title}! (+${q.rewardXp} XP)`);
+              setToast(`Quest Complete: ${q.title}! (+${q.rewardXp} XP)`);
               return { ...q, completed: true };
             }
           }
@@ -421,9 +497,9 @@ export default function App() {
         })
       );
 
-      // Update state and open card
+      // Update state and navigate to dedicated card detail page
       setCards((prev) => [newCard, ...prev]);
-      setSelectedCard(newCard);
+      openCardDetail(newCard);
       setPhoto(null);
       setFile(null);
 
@@ -447,11 +523,21 @@ export default function App() {
       await deleteCardFromDB(id);
       setCards((prev) => prev.filter((c) => c.id !== id));
       if (selectedCard?.id === id) {
-        setSelectedCard(null);
+        closeCardDetail();
       }
       setToast('Card removed from collection.');
     }
   };
+
+  const allCollectionCards = cards.length > 0 ? cards : SAMPLE_CARDS;
+  const currentCardIndex = selectedCard
+    ? allCollectionCards.findIndex((c) => c.id === selectedCard.id)
+    : -1;
+  const prevCard = currentCardIndex > 0 ? allCollectionCards[currentCardIndex - 1] : undefined;
+  const nextCard =
+    currentCardIndex >= 0 && currentCardIndex < allCollectionCards.length - 1
+      ? allCollectionCards[currentCardIndex + 1]
+      : undefined;
 
   return (
     <div className={`app theme-${theme} view-${activeView} ${user ? 'is-logged-in' : 'is-logged-out'}`}>
@@ -463,40 +549,43 @@ export default function App() {
         health={health}
         user={user}
         activeView={activeView}
-        onSelectView={setActiveView}
+        onSelectView={changeView}
         onOpenAuth={() => setAuthOpen(true)}
       />
 
       {/* Main View Router */}
       <main className="main-content-area">
         {activeView === 'landing' && (
-          <LandingView
+          <HomePage
             user={user}
+            theme={theme}
             cardsCount={cards.length}
             sampleCards={SAMPLE_CARDS}
-            onOpenCard={(card) => setSelectedCard(card)}
-            onGoToCollection={() => setActiveView('collection')}
-            onGoToScanner={() => setActiveView('scanner')}
-            onGoToRadar={() => setActiveView('radar')}
-            onGoToExpeditions={() => setActiveView('expeditions')}
+            placeLabel={placeLabel}
+            weather={weather}
+            onOpenCard={openCardDetail}
+            onGoToCollection={() => changeView('collection')}
+            onGoToScanner={() => changeView('scanner')}
+            onGoToRadar={() => changeView('radar')}
+            onGoToExpeditions={() => changeView('expeditions')}
             onOpenAuth={() => setAuthOpen(true)}
           />
         )}
 
         {activeView === 'collection' && (
-          <CollectionDexView
+          <DexPage
             cards={cards}
             sampleCards={SAMPLE_CARDS}
             user={user}
-            onSelectCard={(card) => setSelectedCard(card)}
+            onSelectCard={openCardDetail}
             onDeleteCard={handleDeleteCard}
-            onGoToScanner={() => setActiveView('scanner')}
+            onGoToScanner={() => changeView('scanner')}
             onOpenAuth={() => setAuthOpen(true)}
           />
         )}
 
         {activeView === 'scanner' && (
-          <ScannerView
+          <ScannerPage
             photo={photo}
             file={file}
             busy={busy}
@@ -508,12 +597,12 @@ export default function App() {
             onClearPhoto={handleClearPhoto}
             onEnableLocation={handleEnableLocation}
             onIdentify={handleIdentify}
-            onBackToDex={() => setActiveView('collection')}
+            onBackToDex={() => changeView('collection')}
           />
         )}
 
         {activeView === 'radar' && (
-          <RadarView
+          <RadarPage
             specimens={radarSpecimens}
             loading={radarLoading}
             userCoords={coords}
@@ -521,47 +610,47 @@ export default function App() {
             onRefreshRadar={handleRefreshRadar}
             onSelectTarget={(target) => {
               setActiveTarget(target.commonName);
-              setToast(`🎯 Set "${target.commonName}" as active expedition goal!`);
-              setActiveView('expeditions');
+              setToast(`Target Locked: "${target.commonName}" set as active expedition goal!`);
+              changeView('expeditions');
             }}
             onClearTarget={() => setActiveTarget('')}
           />
         )}
 
         {activeView === 'expeditions' && (
-          <ExpeditionsView
+          <ExpeditionsPage
             stats={expeditionStats}
             quests={quests}
             activeTargetName={activeTarget}
             onClearTarget={() => setActiveTarget('')}
             onClaimQuest={handleClaimQuest}
-            onGoToRadar={() => setActiveView('radar')}
-            onGoToScanner={() => setActiveView('scanner')}
+            onGoToRadar={() => changeView('radar')}
+            onGoToScanner={() => changeView('scanner')}
           />
         )}
 
-        {/* 3D Holographic Card Result Modal */}
-        {selectedCard && (
-          <ResultModal
-            selectedCard={selectedCard}
-            cardIndex={cards.findIndex((c) => c.id === selectedCard.id) + 1 || 1}
+        {/* Dedicated Full-Page Specimen Detail Inspector */}
+        {activeView === 'card-detail' && selectedCard && (
+          <CardDetailPage
+            card={selectedCard}
+            cardIndex={currentCardIndex >= 0 ? currentCardIndex + 1 : 1}
+            totalCards={allCollectionCards.length}
             user={user}
-            onClose={() => setSelectedCard(null)}
-            onViewCollection={() => {
-              setSelectedCard(null);
-              setActiveView('collection');
-            }}
+            onBack={closeCardDetail}
+            onNavigatePrev={prevCard ? () => openCardDetail(prevCard) : undefined}
+            onNavigateNext={nextCard ? () => openCardDetail(nextCard) : undefined}
+            onDeleteCard={handleDeleteCard}
             onToast={(msg) => setToast(msg)}
             onOpenAuth={() => setAuthOpen(true)}
           />
         )}
       </main>
 
-      {/* Mobile Sticky Bottom Navigation Bar — strictly for logged-in explorers */}
+      {/* Mobile Sticky Bottom Navigation Bar — only visible when explorer is signed in */}
       {user && (
         <BottomNav
           activeView={activeView}
-          onSelectView={setActiveView}
+          onSelectView={changeView}
           cardsCount={cards.length}
         />
       )}

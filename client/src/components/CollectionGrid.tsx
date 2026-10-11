@@ -1,5 +1,5 @@
 import { useState, type FC, type MouseEvent } from 'react';
-import { Camera, Leaf, Search, Trash2, Bot } from 'lucide-react';
+import { Camera, Leaf, Search, Trash2, Bot, Sparkles } from 'lucide-react';
 import { Discovery } from '../types';
 import { TaxonomyBar } from './TaxonomyBar';
 import { soundEngine } from '../services/sound';
@@ -152,7 +152,10 @@ export const CollectionGrid: FC<CollectionGridProps> = ({
                 <img src={card.image} alt={card.name} />
                 <span>{card.category}</span>
                 <b>{card.name}</b>
-                <small>✦ {card.rarity} · Preview style →</small>
+                <small>
+                  <Sparkles size={9} style={{ display: 'inline', marginRight: '4px' }} />
+                  {card.rarity} · Preview style →
+                </small>
               </button>
             ))}
           </div>
@@ -191,7 +194,7 @@ export const CollectionGrid: FC<CollectionGridProps> = ({
                   )}
                 </div>
                 <span className="collection-category">
-                  {card.category} <i>✦ {card.rarity}</i>
+                  {card.category} <i>· {card.rarity}</i>
                 </span>
                 <b>{card.name}</b>
                 <small>

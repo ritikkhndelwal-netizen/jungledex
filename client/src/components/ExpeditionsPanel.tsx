@@ -1,5 +1,5 @@
 import { type FC } from 'react';
-import { Compass, Footprints, Award, Radar, CheckCircle2 } from 'lucide-react';
+import { Compass, Footprints, Award, Radar, CheckCircle2, Crosshair, Sun, Waves, Leaf, Bug } from 'lucide-react';
 import { Quest } from '../types';
 import { ExpeditionStats, calculateLevel } from '../services/expeditions';
 import { soundEngine } from '../services/sound';
@@ -45,7 +45,9 @@ export const ExpeditionsPanel: FC<ExpeditionsPanelProps> = ({
       {activeTargetName && (
         <div className="active-target-banner">
           <div>
-            <span className="target-label">🎯 ACTIVE EXPEDITION TARGET</span>
+            <span className="target-label">
+              <Crosshair size={12} /> ACTIVE EXPEDITION TARGET
+            </span>
             <b>Tracking: {activeTargetName}</b>
           </div>
           {onClearTarget && (
@@ -110,7 +112,7 @@ export const ExpeditionsPanel: FC<ExpeditionsPanelProps> = ({
               <div className="badge-chips">
                 {stats.unlockedBadges.map((badge, i) => (
                   <span className="badge-chip" key={i}>
-                    🏅 {badge}
+                    <Award size={12} /> {badge}
                   </span>
                 ))}
               </div>
@@ -131,7 +133,13 @@ export const ExpeditionsPanel: FC<ExpeditionsPanelProps> = ({
                 className={`quest-item ${quest.completed ? 'completed' : ''}`}
                 key={quest.id}
               >
-                <span className="quest-icon">{quest.icon}</span>
+                <span className="quest-icon">
+                  {quest.icon === 'sun' && <Sun size={17} />}
+                  {quest.icon === 'waves' && <Waves size={17} />}
+                  {quest.icon === 'leaf' && <Leaf size={17} />}
+                  {quest.icon === 'bug' && <Bug size={17} />}
+                  {quest.icon === 'compass' && <Compass size={17} />}
+                </span>
                 <div className="quest-info">
                   <b>{quest.title}</b>
                   <p>{quest.description}</p>
