@@ -53,3 +53,29 @@ export async function identifySpecimen(
 
   return data as IdentificationResponse;
 }
+
+export async function shareCardToApi(card: unknown): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_BASE}/api/cards/share`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ card }),
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn('[API Share Card Warning]:', err);
+    return false;
+  }
+}
+
+export async function fetchSharedCardFromApi(cardId: string): Promise<any | null> {
+  try {
+    const res = await fetch(`${API_BASE}/api/cards/${encodeURIComponent(cardId)}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.card || null;
+  } catch (err) {
+    console.warn('[API Fetch Card Warning]:', err);
+    return null;
+  }
+}

@@ -49,8 +49,16 @@ app.use(
     methods: ['GET', 'POST'],
   })
 );
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '10mb' }));
 app.use('/api', apiLimiter);
+
+// In-memory shared cards cache (capped to 1,000 recent cards to prevent memory leaks)
+interface SharedCardRecord {
+  id: string;
+  card: Record<string, unknown>;
+  createdAt: number;
+}
+const sharedCardsMap = new Map<string, SharedCardRecord>();
 
 app.get('/api/health', (_req, res) => res.json({
   ok: true,
@@ -58,6 +66,38 @@ app.get('/api/health', (_req, res) => res.json({
   aiConfigured: Boolean(process.env.GOOGLE_API_KEY),
   model: process.env.GOOGLE_MODEL || 'gemini-3.5-flash',
 }));
+
+// Publish / share a card so anyone with the link can view it
+app.post('/api/cards/share', (req, res) => {
+  const { card } = req.body as { card?: Record<string, unknown> };
+  if (!card || typeof card !== 'object' || !card.id) {
+    return res.status(400).json({ error: 'Valid specimen card payload is required.' });
+  }
+
+  // LRU eviction if cache exceeds 1,000 cards
+  if (sharedCardsMap.size >= 1000) {
+    const oldestKey = sharedCardsMap.keys().next().value;
+    if (oldestKey) sharedCardsMap.delete(oldestKey);
+  }
+
+  const id = String(card.id);
+  sharedCardsMap.set(id, {
+    id,
+    card,
+    createdAt: Date.now(),
+  });
+
+  return res.json({ ok: true, id });
+});
+
+// Fetch a shared card by ID for public view
+app.get('/api/cards/:id', (req, res) => {
+  const item = sharedCardsMap.get(req.params.id);
+  if (!item) {
+    return res.status(404).json({ error: 'Specimen card not found or has expired.' });
+  }
+  return res.json({ ok: true, card: item.card });
+});
 
 function extractJson(text: string): Record<string, unknown> {
   const cleaned = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');

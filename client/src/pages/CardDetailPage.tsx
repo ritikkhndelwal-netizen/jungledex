@@ -14,11 +14,14 @@ import {
   Trash2,
   UserPlus,
   ShieldCheck,
+  MessageCircle,
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { Discovery, UserProfile } from '../types';
 import { DiscoveryCard } from '../components/DiscoveryCard';
 import { soundEngine } from '../services/sound';
+import { shareCardToApi } from '../services/api';
+import { shareCardToFirestore } from '../services/firebase';
 
 interface CardDetailPageProps {
   card: Discovery;
@@ -47,6 +50,7 @@ export const CardDetailPage: FC<CardDetailPageProps> = ({
 }) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const exportCard = async () => {
@@ -72,27 +76,142 @@ export const CardDetailPage: FC<CardDetailPageProps> = ({
     }
   };
 
+  const publishCardForSharing = async (cardToShare: Discovery) => {
+    await Promise.allSettled([
+      shareCardToApi(cardToShare),
+      shareCardToFirestore(cardToShare),
+    ]);
+  };
+
+  const getCardShareImage = async (): Promise<{ file: File; blob: Blob } | null> => {
+    // 1. Try high-res rendered holographic specimen card PNG
+    if (cardRef.current) {
+      try {
+        const dataUrl = await toPng(cardRef.current, {
+          cacheBust: true,
+          pixelRatio: 2,
+          skipFonts: false,
+        });
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+        const cleanName = card.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        return { file: new File([blob], `jungledex-${cleanName}.png`, { type: 'image/png' }), blob };
+      } catch (e) {
+        console.warn('[Card Render Share Fallback]:', e);
+      }
+    }
+
+    // 2. Fallback to raw card.image photo
+    try {
+      const res = await fetch(card.image);
+      const blob = await res.blob();
+      const cleanName = card.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const type = blob.type || 'image/jpeg';
+      const ext = type.includes('png') ? 'png' : 'jpg';
+      return { file: new File([blob], `jungledex-${cleanName}.${ext}`, { type }), blob };
+    } catch (e) {
+      console.warn('[Card Image Fallback Error]:', e);
+    }
+    return null;
+  };
+
+  const shareToWhatsApp = async () => {
+    soundEngine.playBeep(950, 0.04);
+    setSharing(true);
+    onToast('Preparing card image and WhatsApp link…');
+    try {
+      // Ensure card is accessible to recipient via cloud/server
+      await publishCardForSharing(card);
+
+      const cardUrl = `${window.location.origin}${window.location.pathname}#/card/${card.id}`;
+      const message = `🌿 *${card.name}* (${card.category}) — JungleDex Field Discovery\n\n"${card.description}"\n\n🔍 *View full specimen card & interactive 3D hologram:*\n${cardUrl}`;
+
+      const imageResult = await getCardShareImage();
+
+      // Mobile share sheet with file attached:
+      if (imageResult && navigator.canShare && navigator.canShare({ files: [imageResult.file] })) {
+        await navigator.share({
+          title: `JungleDex: ${card.name}`,
+          text: message,
+          url: cardUrl,
+          files: [imageResult.file],
+        });
+        onToast('Shared to WhatsApp with card image and link!');
+        return;
+      }
+
+      // Desktop fallback: copy image to clipboard so user can paste it right into WhatsApp
+      if (imageResult && navigator.clipboard && typeof ClipboardItem !== 'undefined') {
+        try {
+          await navigator.clipboard.write([
+            new ClipboardItem({ [imageResult.blob.type]: imageResult.blob }),
+          ]);
+        } catch {
+          // Ignore clipboard permission issue
+        }
+      }
+
+      // Open WhatsApp click-to-chat
+      const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+      window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+      onToast('Opening WhatsApp! Card image copied to clipboard — press Ctrl+V to attach it!');
+    } catch (err) {
+      if ((err as Error)?.name !== 'AbortError') {
+        console.warn('[WhatsApp Share Error]:', err);
+        onToast('Could not share to WhatsApp.');
+      }
+    } finally {
+      setSharing(false);
+    }
+  };
+
   const shareCard = async () => {
     soundEngine.playBeep(950, 0.04);
-    const text = `Discovered "${card.name}" (${card.category}) with JungleDex!\n${card.description}`;
-    if (navigator.share) {
-      try {
+    setSharing(true);
+    onToast('Preparing card image and shareable link…');
+    try {
+      await publishCardForSharing(card);
+
+      const cardUrl = `${window.location.origin}${window.location.pathname}#/card/${card.id}`;
+      const text = `🌿 Discovered "${card.name}" (${card.category}) on JungleDex!\n\n${card.description}\n\n🔍 View Specimen Card:\n${cardUrl}`;
+
+      const imageResult = await getCardShareImage();
+
+      if (imageResult && navigator.canShare && navigator.canShare({ files: [imageResult.file] })) {
         await navigator.share({
           title: `My JungleDex Discovery: ${card.name}`,
           text,
+          url: cardUrl,
+          files: [imageResult.file],
         });
-      } catch {
-        // user dismissed
+        onToast('Card image, description, and link shared!');
+        return;
       }
-    } else {
-      try {
-        await navigator.clipboard.writeText(text);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2500);
-        onToast('Observation caption copied to clipboard!');
-      } catch {
-        onToast('Sharing not supported on this browser.');
+
+      if (navigator.share) {
+        await navigator.share({
+          title: `My JungleDex Discovery: ${card.name}`,
+          text,
+          url: cardUrl,
+        });
+        onToast('Observation caption and link shared!');
+        return;
       }
+
+      // Desktop / unsupported: copy caption and link
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+      onToast('Observation link and caption copied to clipboard!');
+    } catch (err) {
+      if ((err as Error)?.name !== 'AbortError') {
+        console.warn('[Share Error]:', err);
+        const cardUrl = `${window.location.origin}${window.location.pathname}#/card/${card.id}`;
+        navigator.clipboard.writeText(`${card.name} — ${cardUrl}`);
+        onToast('Card link copied to clipboard!');
+      }
+    } finally {
+      setSharing(false);
     }
   };
 
@@ -238,18 +357,32 @@ export const CardDetailPage: FC<CardDetailPageProps> = ({
 
           {/* Action Button Deck */}
           <div className="dossier-actions-deck">
+            {/* Direct WhatsApp Share: attaches card image + description + link */}
             <button
-              className="button primary full"
+              className="button whatsapp-share-btn full"
+              onClick={shareToWhatsApp}
+              disabled={sharing}
+            >
+              <MessageCircle size={16} /> {sharing ? 'Preparing Share…' : 'Share to WhatsApp (Card & Link)'}
+            </button>
+
+            {/* General Share: uses native share sheet with file on mobile or clipboard */}
+            <button
+              className="button secondary full"
+              onClick={shareCard}
+              disabled={sharing}
+            >
+              {copied ? <Check size={16} /> : <Share2 size={16} />}
+              {copied ? 'Link & Caption Copied!' : 'Share Discovery (Other Apps)'}
+            </button>
+
+            <button
+              className="button ghost full"
               onClick={exportCard}
               disabled={exporting}
             >
               <Download size={16} />
-              {exporting ? 'Generating PNG…' : 'Export Card as High-Res PNG'}
-            </button>
-
-            <button className="button secondary full" onClick={shareCard}>
-              {copied ? <Check size={16} /> : <Share2 size={16} />}
-              {copied ? 'Observation Copied!' : 'Share Discovery'}
+              {exporting ? 'Generating PNG…' : 'Download High-Res PNG Card'}
             </button>
 
             {onDeleteCard && !card.id.startsWith('sample-') && (

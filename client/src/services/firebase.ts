@@ -16,6 +16,7 @@ import {
   collection,
   doc,
   setDoc,
+  getDoc,
   getDocs,
   type Firestore,
 } from 'firebase/firestore';
@@ -176,4 +177,33 @@ export async function fetchCardsFromCloud(userId: string): Promise<Discovery[]> 
     console.warn('[Firestore Fetch Warning]:', err);
     return [];
   }
+}
+
+// Publish card to public_cards collection for link viewers
+export async function shareCardToFirestore(card: Discovery): Promise<void> {
+  if (!db) return;
+  try {
+    const cardRef = doc(db, 'public_cards', card.id);
+    await setDoc(cardRef, {
+      ...card,
+      sharedAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.warn('[Firestore Public Share Warning]:', err);
+  }
+}
+
+// Fetch public shared card for link viewers
+export async function fetchSharedCardFromFirestore(cardId: string): Promise<Discovery | null> {
+  if (!db) return null;
+  try {
+    const cardRef = doc(db, 'public_cards', cardId);
+    const snap = await getDoc(cardRef);
+    if (snap.exists()) {
+      return snap.data() as Discovery;
+    }
+  } catch (err) {
+    console.warn('[Firestore Public Fetch Warning]:', err);
+  }
+  return null;
 }

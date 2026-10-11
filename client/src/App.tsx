@@ -11,12 +11,13 @@ import {
   dataUrlToFile,
   type QueuedScan,
 } from './services/db';
-import { checkApiHealth, identifySpecimen } from './services/api';
+import { checkApiHealth, identifySpecimen, fetchSharedCardFromApi } from './services/api';
 import { reverseGeocodeLocation, fetchWeatherInfo } from './services/geo';
 import {
   subscribeToAuth,
   syncCardToCloud,
   fetchCardsFromCloud,
+  fetchSharedCardFromFirestore,
 } from './services/firebase';
 import {
   getStoredExpeditionStats,
@@ -195,7 +196,7 @@ export default function App() {
 
   // Synchronize browser history and hash navigation
   useEffect(() => {
-    const handleHash = () => {
+    const handleHash = async () => {
       const hash = window.location.hash;
       const v = hashToView(hash);
       if (v === 'card-detail') {
@@ -204,6 +205,25 @@ export default function App() {
         const match = allSpecimens.find((c) => c.id === cardId);
         if (match) {
           setSelectedCard(match);
+        } else {
+          // Card was not found in local Dex — retrieve shared card from cloud/server!
+          try {
+            let sharedCard = await fetchSharedCardFromFirestore(cardId);
+            if (!sharedCard) {
+              sharedCard = await fetchSharedCardFromApi(cardId);
+            }
+            if (sharedCard) {
+              setSelectedCard(sharedCard);
+              soundEngine.playFanfare();
+              setToast(`Discovered card "${sharedCard.name}" loaded!`);
+            } else {
+              setToast('Specimen card could not be found or link has expired.');
+              changeView('collection');
+            }
+          } catch {
+            setToast('Could not load shared specimen card.');
+            changeView('collection');
+          }
         }
       }
       setActiveView(v);
