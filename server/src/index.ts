@@ -8,6 +8,9 @@ import rateLimit from 'express-rate-limit';
 const app = express();
 const port = Number(process.env.PORT || 8787);
 
+// Trust first proxy hop (Render, Fly, AWS ALB, Cloudflare) for accurate client IP rate limiting
+app.set('trust proxy', 1);
+
 // General rate limiter for all /api endpoints: 100 requests per 15 minutes
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -26,12 +29,26 @@ const identifyLimiter = rateLimit({
   message: { error: 'Too many scan requests. Please wait a minute before analyzing another photo.' },
 });
 
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 }, fileFilter: (_req, file, cb) => {
-  if (!file.mimetype.startsWith('image/')) return cb(new Error('Only image uploads are supported.'));
-  cb(null, true);
-} });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (!file.mimetype.startsWith('image/')) return cb(new Error('Only image uploads are supported.'));
+    cb(null, true);
+  },
+});
+
+const allowedOrigins = process.env.CLIENT_ORIGIN
+  ? process.env.CLIENT_ORIGIN.split(',').map((o) => o.trim()).filter(Boolean)
+  : ['http://localhost:5173'];
+
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
-app.use(cors({ origin: process.env.CLIENT_ORIGIN?.split(',') || ['http://localhost:5173'], methods: ['GET', 'POST'] }));
+app.use(
+  cors({
+    origin: allowedOrigins.includes('*') ? '*' : allowedOrigins,
+    methods: ['GET', 'POST'],
+  })
+);
 app.use(express.json({ limit: '1mb' }));
 app.use('/api', apiLimiter);
 
@@ -112,8 +129,9 @@ Never recommend touching wild creatures, plants, or fungi. Encourage respectful 
     }
 
     if (!result.ok) {
+      console.error('[Google AI Error]:', result.status, result.data.error?.message || result.data);
       return res.status(502).json({
-        error: `AI request failed: ${result.data.error?.message || `Provider returned HTTP ${result.status}.`}`,
+        error: 'The AI identification service encountered an upstream issue. Please retry in a moment.',
       });
     }
 
@@ -148,14 +166,15 @@ Never recommend touching wild creatures, plants, or fungi. Encourage respectful 
     console.error('[JungleDex API Error]:', message);
     return res.status(500).json({
       error: message.includes('fetch failed')
-        ? 'Could not reach the AI service. Check network and provider access.'
-        : message,
+        ? 'Could not reach the AI service. Check network connectivity.'
+        : 'An unexpected internal error occurred while processing the image.',
     });
   }
 });
 
 app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   const message = error instanceof Error ? error.message : 'Request failed.';
-  res.status(400).json({ error: message });
+  console.error('[Unhandled Request Error]:', message);
+  res.status(400).json({ error: message.startsWith('Only image') ? message : 'Invalid request data.' });
 });
 app.listen(port, () => console.log(`JungleDex API listening on port ${port}`));

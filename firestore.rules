@@ -1,0 +1,22 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // User profile documents & user discoveries
+    match /users/{userId} {
+      // User can read and write their own top-level profile document
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      // User specimen cards & discoveries
+      match /discoveries/{discoveryId} {
+        // Enforce user document ownership
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+
+    // Default deny all other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
