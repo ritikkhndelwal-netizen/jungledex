@@ -1,5 +1,6 @@
 import { useRef, type FC, type DragEvent } from 'react';
-import { Camera, CloudSun, MapPin, Sparkles, Upload, X, Check, Leaf } from 'lucide-react';
+import { Camera, CloudSun, MapPin, Sparkles, Upload, X, Check, Leaf, UserPlus } from 'lucide-react';
+import { UserProfile } from '../types';
 
 interface WorkbenchProps {
   photo: string | null;
@@ -9,6 +10,9 @@ interface WorkbenchProps {
   locationEnabled: boolean;
   placeLabel: string;
   weather: string;
+  user?: UserProfile | null;
+  guestScansUsed?: number;
+  onOpenAuth?: () => void;
   onFileSelect: (file: File | null) => void;
   onClearPhoto: () => void;
   onEnableLocation: () => void;
@@ -23,6 +27,9 @@ export const Workbench: FC<WorkbenchProps> = ({
   locationEnabled,
   placeLabel,
   weather,
+  user,
+  guestScansUsed = 0,
+  onOpenAuth,
   onFileSelect,
   onClearPhoto,
   onEnableLocation,
@@ -142,6 +149,30 @@ export const Workbench: FC<WorkbenchProps> = ({
             </button>
           )}
 
+          {/* Guest 1-Scan Trial Notice */}
+          {!user && (
+            <div
+              className={`guest-trial-badge ${guestScansUsed >= 1 ? 'used' : 'available'}`}
+              onClick={guestScansUsed >= 1 ? onOpenAuth : undefined}
+            >
+              {guestScansUsed >= 1 ? (
+                <>
+                  <UserPlus size={14} />
+                  <span>
+                    <b>Free trial scan used.</b> Sign in to unlock unlimited scans & save discoveries to cloud →
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Sparkles size={14} />
+                  <span>
+                    <b>Guest Mode:</b> 1 free AI scan available. Snap or pick a photo to test identification!
+                  </span>
+                </>
+              )}
+            </div>
+          )}
+
           <div className="upload-actions">
             <button
               className="button secondary"
@@ -151,21 +182,31 @@ export const Workbench: FC<WorkbenchProps> = ({
               {photo ? 'Change photo' : 'Choose / Capture Photo'}
             </button>
 
-            <button
-              className="button primary"
-              onClick={onIdentify}
-              disabled={!file || busy}
-            >
-              {busy ? (
-                <>
-                  <span className="spinner" /> Analyzing Specimen…
-                </>
-              ) : (
-                <>
-                  <Sparkles size={17} /> Identify with AI
-                </>
-              )}
-            </button>
+            {!user && guestScansUsed >= 1 ? (
+              <button
+                className="button primary"
+                onClick={onOpenAuth}
+                title="Create free account to scan more photos"
+              >
+                <UserPlus size={17} /> Sign In to Scan (Trial Used)
+              </button>
+            ) : (
+              <button
+                className="button primary"
+                onClick={onIdentify}
+                disabled={!file || busy}
+              >
+                {busy ? (
+                  <>
+                    <span className="spinner" /> Analyzing Specimen…
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={17} /> {!user ? 'Try 1 Free AI Scan' : 'Identify with AI'}
+                  </>
+                )}
+              </button>
+            )}
           </div>
 
           {error && <p className="error-msg">{error}</p>}

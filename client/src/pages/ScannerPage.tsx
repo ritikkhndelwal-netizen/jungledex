@@ -2,6 +2,7 @@ import type { FC } from 'react';
 import { Sparkles, Eye, ArrowLeft, Leaf, Bug, Sun } from 'lucide-react';
 import { Workbench } from '../components/Workbench';
 import { soundEngine } from '../services/sound';
+import { UserProfile } from '../types';
 
 interface ScannerPageProps {
   photo: string | null;
@@ -11,6 +12,9 @@ interface ScannerPageProps {
   locationEnabled: boolean;
   placeLabel: string;
   weather: string;
+  user?: UserProfile | null;
+  guestScansUsed?: number;
+  onOpenAuth?: () => void;
   onFileSelect: (file: File | null) => void;
   onClearPhoto: () => void;
   onEnableLocation: () => void;
@@ -26,6 +30,9 @@ export const ScannerPage: FC<ScannerPageProps> = ({
   locationEnabled,
   placeLabel,
   weather,
+  user,
+  guestScansUsed = 0,
+  onOpenAuth,
   onFileSelect,
   onClearPhoto,
   onEnableLocation,
@@ -67,6 +74,9 @@ export const ScannerPage: FC<ScannerPageProps> = ({
         locationEnabled={locationEnabled}
         placeLabel={placeLabel}
         weather={weather}
+        user={user}
+        guestScansUsed={guestScansUsed}
+        onOpenAuth={onOpenAuth}
         onFileSelect={onFileSelect}
         onClearPhoto={onClearPhoto}
         onEnableLocation={onEnableLocation}

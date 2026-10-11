@@ -3,9 +3,29 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import multer from 'multer';
+import rateLimit from 'express-rate-limit';
 
 const app = express();
 const port = Number(process.env.PORT || 8787);
+
+// General rate limiter for all /api endpoints: 100 requests per 15 minutes
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 100,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { error: 'Too many requests from this IP, please try again in a few minutes.' },
+});
+
+// Strict rate limiter for AI inference / photo identification: 10 requests per minute
+const identifyLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 10,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { error: 'Too many scan requests. Please wait a minute before analyzing another photo.' },
+});
+
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 }, fileFilter: (_req, file, cb) => {
   if (!file.mimetype.startsWith('image/')) return cb(new Error('Only image uploads are supported.'));
   cb(null, true);
@@ -13,6 +33,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(cors({ origin: process.env.CLIENT_ORIGIN?.split(',') || ['http://localhost:5173'], methods: ['GET', 'POST'] }));
 app.use(express.json({ limit: '1mb' }));
+app.use('/api', apiLimiter);
 
 app.get('/api/health', (_req, res) => res.json({
   ok: true,
@@ -53,7 +74,7 @@ async function callGoogleAI(apiKey: string, model: string, prompt: string, mimeT
   return { ok: response.ok, status: response.status, data };
 }
 
-app.post('/api/identify', upload.single('image'), async (req, res) => {
+app.post('/api/identify', identifyLimiter, upload.single('image'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'Upload an image first.' });
     const apiKey = process.env.GOOGLE_API_KEY;

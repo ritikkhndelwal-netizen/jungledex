@@ -104,11 +104,19 @@ export default function App() {
   // User & Auth State
   const [user, setUser] = useState<UserProfile | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
+  const [guestScansUsed, setGuestScansUsed] = useState<number>(() => {
+    try {
+      return Number(localStorage.getItem('jungledex_guest_scans_used') || 0);
+    } catch {
+      return 0;
+    }
+  });
 
   // Expeditions & Quests State
   const [expeditionStats, setExpeditionStats] = useState<ExpeditionStats>(getStoredExpeditionStats());
   const [quests, setQuests] = useState<Quest[]>(getStoredQuests());
   const [activeTarget, setActiveTarget] = useState<string>('');
+  const [isTrackingActive, setIsTrackingActive] = useState<boolean>(false);
 
   // Radar State
   const [radarSpecimens, setRadarSpecimens] = useState<RadarSpecimen[]>([]);
@@ -224,7 +232,19 @@ export default function App() {
     const unsubscribeAuth = subscribeToAuth((profile) => {
       setUser(profile);
       if (profile) {
-        // Fetch cloud cards and merge
+        // Automatically migrate any guest trial cards to this user's account
+        getStoredCards().then(async (localCards) => {
+          const unassigned = localCards.filter((c) => !c.userId || c.userId === profile.uid);
+          for (const card of unassigned) {
+            if (!card.userId) {
+              const updatedCard: Discovery = { ...card, userId: profile.uid };
+              await saveCardToDB(updatedCard);
+              await syncCardToCloud(profile.uid, updatedCard);
+            }
+          }
+        });
+
+        // Fetch cloud cards and merge with local collection
         fetchCardsFromCloud(profile.uid).then((cloudCards) => {
           if (cloudCards.length > 0) {
             setCards((prev) => {
@@ -266,10 +286,17 @@ export default function App() {
 
   // Real-time GPS movement watcher (Stride / distance tracking)
   useEffect(() => {
-    if (!navigator.geolocation) return;
+    // Only track if user has explicitly activated an outdoor walk session
+    if (!navigator.geolocation || !isTrackingActive) return;
 
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
+        const accuracy = pos.coords.accuracy || 999;
+        // Ignore low-accuracy positions (> 25m) typical of indoor Wi-Fi or laptops
+        if (accuracy > 25) {
+          return;
+        }
+
         const current = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
         if (lastCoordsRef.current) {
           const delta = haversineMeters(
@@ -279,8 +306,9 @@ export default function App() {
             current.longitude
           );
 
-          // Filter out GPS jitter (< 3m) and impossible spikes (> 150m)
-          if (delta >= 3 && delta < 150) {
+          // Only accept movements that clearly exceed sensor inaccuracy (> max(8m, accuracy * 0.8))
+          const minMovementThreshold = Math.max(8, accuracy * 0.8);
+          if (delta >= minMovementThreshold && delta < 150) {
             const addedSteps = Math.round(delta / 0.76);
             setExpeditionStats((prev) => {
               const newDist = prev.distanceMeters + delta;
@@ -315,13 +343,13 @@ export default function App() {
         lastCoordsRef.current = current;
       },
       () => {},
-      { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 }
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
     );
 
     return () => {
       navigator.geolocation.clearWatch(watchId);
     };
-  }, []);
+  }, [isTrackingActive]);
 
   // Handle file choice & camera capture
   const handleFileSelect = async (selected: File | null) => {
@@ -429,10 +457,47 @@ export default function App() {
     );
   };
 
+  // Toggle live outdoor expedition tracking session
+  const handleToggleTracking = () => {
+    const next = !isTrackingActive;
+    setIsTrackingActive(next);
+    if (next) {
+      lastCoordsRef.current = null;
+      soundEngine.playFanfare();
+      setToast('Expedition Walk Started: Real-time GPS stride tracking enabled.');
+    } else {
+      soundEngine.playBeep(750, 0.05);
+      setToast('Expedition Walk Paused: Stride tracking paused.');
+    }
+  };
+
+  // Reset expedition telemetry (clears phantom steps/distance from laptop tests)
+  const handleResetExpeditionStats = () => {
+    const freshStats: ExpeditionStats = {
+      distanceMeters: 0,
+      estimatedSteps: 0,
+      totalXp: 0,
+      level: 1,
+      unlockedBadges: [],
+    };
+    setExpeditionStats(freshStats);
+    saveExpeditionStats(freshStats);
+    soundEngine.playBeep(650, 0.08);
+    setToast('Expedition telemetry reset back to 0.');
+  };
+
   // AI Identification trigger
   const handleIdentify = async () => {
     if (!file || !photo) {
       setError('Capture or choose a photo first.');
+      return;
+    }
+
+    // Guest Trial Protection: check if 1 free scan already used
+    if (!user && guestScansUsed >= 1) {
+      soundEngine.playBeep(600, 0.08);
+      setToast("You've used your 1 free guest scan! Create a free account or sign in to continue scanning.");
+      setAuthOpen(true);
       return;
     }
 
@@ -474,6 +539,15 @@ export default function App() {
       // Cloud Sync if authenticated
       if (user) {
         await syncCardToCloud(user.uid, newCard);
+      } else {
+        // Track guest trial scan used
+        const nextCount = guestScansUsed + 1;
+        setGuestScansUsed(nextCount);
+        try {
+          localStorage.setItem('jungledex_guest_scans_used', String(nextCount));
+        } catch {
+          // ignore
+        }
       }
 
       // Check category quests
@@ -505,9 +579,11 @@ export default function App() {
 
       soundEngine.playFanfare();
       setToast(
-        newCard.isAiGenerated
-          ? `Visual analyzed: "${newCard.name}" (Tagged as AI-Generated)`
-          : `Discovery recorded: "${newCard.name}"!`
+        !user
+          ? `🎉 Free trial scan recorded: "${newCard.name}"! Sign in to save permanently to cloud.`
+          : newCard.isAiGenerated
+            ? `Visual analyzed: "${newCard.name}" (Tagged as AI-Generated)`
+            : `Discovery recorded: "${newCard.name}"!`
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Identification failed. Please try again.');
@@ -529,7 +605,7 @@ export default function App() {
     }
   };
 
-  const allCollectionCards = cards.length > 0 ? cards : SAMPLE_CARDS;
+  const allCollectionCards = user ? cards : (cards.length > 0 ? cards : SAMPLE_CARDS);
   const currentCardIndex = selectedCard
     ? allCollectionCards.findIndex((c) => c.id === selectedCard.id)
     : -1;
@@ -560,6 +636,7 @@ export default function App() {
             user={user}
             theme={theme}
             cardsCount={cards.length}
+            cards={cards}
             sampleCards={SAMPLE_CARDS}
             placeLabel={placeLabel}
             weather={weather}
@@ -593,6 +670,9 @@ export default function App() {
             locationEnabled={locationEnabled}
             placeLabel={placeLabel}
             weather={weather}
+            user={user}
+            guestScansUsed={guestScansUsed}
+            onOpenAuth={() => setAuthOpen(true)}
             onFileSelect={handleFileSelect}
             onClearPhoto={handleClearPhoto}
             onEnableLocation={handleEnableLocation}
@@ -621,7 +701,12 @@ export default function App() {
           <ExpeditionsPage
             stats={expeditionStats}
             quests={quests}
+            user={user}
+            onOpenAuth={() => setAuthOpen(true)}
             activeTargetName={activeTarget}
+            isTrackingActive={isTrackingActive}
+            onToggleTracking={handleToggleTracking}
+            onResetStats={handleResetExpeditionStats}
             onClearTarget={() => setActiveTarget('')}
             onClaimQuest={handleClaimQuest}
             onGoToRadar={() => changeView('radar')}

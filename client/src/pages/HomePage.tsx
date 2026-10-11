@@ -19,6 +19,7 @@ interface HomePageProps {
   user: UserProfile | null;
   theme?: ThemeType;
   cardsCount: number;
+  cards?: Discovery[];
   sampleCards: Discovery[];
   placeLabel?: string;
   weather?: string;
@@ -34,6 +35,7 @@ export const HomePage: FC<HomePageProps> = ({
   user,
   theme = 'nature',
   cardsCount,
+  cards = [],
   sampleCards,
   placeLabel = 'Kharghar, Navi Mumbai',
   weather = '28°C · Gentle Breeze',
@@ -225,9 +227,11 @@ export const HomePage: FC<HomePageProps> = ({
       <div className="pokedex-numbered-shelf">
         <div className="shelf-header">
           <div>
-            <h4>My Collection Shelf</h4>
+            <h4>{user ? 'My Living Dex' : 'Sample Discoveries Preview'}</h4>
             <span className="shelf-counter">
-              {cardsCount > 0 ? `${cardsCount} specimens discovered` : 'Tap to inspect 3D cards'}
+              {user
+                ? (cardsCount > 0 ? `${cardsCount} specimens discovered` : '0 specimens discovered')
+                : 'Guest Preview · 1 Free Scan Available'}
             </span>
           </div>
           <button className="text-button shelf-see-all" onClick={onGoToCollection}>
@@ -236,24 +240,60 @@ export const HomePage: FC<HomePageProps> = ({
         </div>
 
         <div className="shelf-cards-row">
-          {sampleCards.slice(0, 4).map((card, i) => (
-            <div
-              key={card.id}
-              className="shelf-tile"
-              onClick={() => {
-                soundEngine.playFanfare();
-                onOpenCard(card);
-              }}
-              title="Tap to preview 3D card"
-            >
-              <img className="shelf-tile-thumb" src={card.image} alt={card.name} />
-              <small>#{String(i + 1).padStart(4, '0')}</small>
-              <b>{card.name}</b>
-              <span className={`shelf-rarity-tag ${card.rarity.toLowerCase()}`}>
-                {card.rarity}
-              </span>
-            </div>
-          ))}
+          {user ? (
+            cards.length > 0 ? (
+              cards.slice(0, 4).map((card, i) => (
+                <div
+                  key={card.id}
+                  className="shelf-tile"
+                  onClick={() => {
+                    soundEngine.playFanfare();
+                    onOpenCard(card);
+                  }}
+                  title="Tap to inspect 3D card"
+                >
+                  <img className="shelf-tile-thumb" src={card.image} alt={card.name} />
+                  <small>#{String(i + 1).padStart(4, '0')}</small>
+                  <b>{card.name}</b>
+                  <span className={`shelf-rarity-tag ${card.rarity.toLowerCase()}`}>
+                    {card.rarity}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <div
+                className="shelf-tile mystery-slot"
+                onClick={onGoToScanner}
+                style={{ minWidth: '220px', cursor: 'pointer' }}
+                title="Launch scanner to record your first discovery"
+              >
+                <div className="mystery-icon-wrap">
+                  <Leaf size={22} />
+                </div>
+                <b>No Discoveries Yet</b>
+                <span className="mystery-hint">+ Launch Field Scanner</span>
+              </div>
+            )
+          ) : (
+            sampleCards.slice(0, 4).map((card, i) => (
+              <div
+                key={card.id}
+                className="shelf-tile"
+                onClick={() => {
+                  soundEngine.playFanfare();
+                  onOpenCard(card);
+                }}
+                title="Tap to preview 3D card"
+              >
+                <img className="shelf-tile-thumb" src={card.image} alt={card.name} />
+                <small>#{String(i + 1).padStart(4, '0')}</small>
+                <b>{card.name}</b>
+                <span className={`shelf-rarity-tag ${card.rarity.toLowerCase()}`}>
+                  {card.rarity}
+                </span>
+              </div>
+            ))
+          )}
 
           {/* Mystery locked slot */}
           <div
@@ -264,7 +304,7 @@ export const HomePage: FC<HomePageProps> = ({
             <div className="mystery-icon-wrap">
               <HelpCircle size={22} />
             </div>
-            <span className="mystery-hint">Scan Wild</span>
+            <span className="mystery-hint">{user ? 'Scan Wild' : 'Try Free Scan'}</span>
           </div>
         </div>
       </div>

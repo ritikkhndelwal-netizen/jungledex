@@ -1,13 +1,36 @@
 import type { FC } from 'react';
-import { Footprints, Navigation, Sparkles, Compass, CheckCircle2, Award, Camera, Crosshair, Trophy, Sun, Waves, Leaf, Bug } from 'lucide-react';
+import {
+  Footprints,
+  Navigation,
+  Sparkles,
+  Award,
+  Camera,
+  Crosshair,
+  Trophy,
+  Play,
+  Pause,
+  RotateCcw,
+  Compass,
+  Sun,
+  Waves,
+  Leaf,
+  Bug,
+  CheckCircle2,
+} from 'lucide-react';
 import { ExpeditionStats, calculateLevel } from '../services/expeditions';
-import { Quest } from '../types';
+import { Quest, UserProfile } from '../types';
 import { soundEngine } from '../services/sound';
+import { Cloud, UserPlus } from 'lucide-react';
 
 interface ExpeditionsPageProps {
   stats: ExpeditionStats;
   quests: Quest[];
+  user?: UserProfile | null;
+  onOpenAuth?: () => void;
   activeTargetName?: string;
+  isTrackingActive?: boolean;
+  onToggleTracking?: () => void;
+  onResetStats?: () => void;
   onClearTarget: () => void;
   onClaimQuest: (questId: string) => void;
   onGoToRadar: () => void;
@@ -17,7 +40,12 @@ interface ExpeditionsPageProps {
 export const ExpeditionsPage: FC<ExpeditionsPageProps> = ({
   stats,
   quests,
+  user,
+  onOpenAuth,
   activeTargetName,
+  isTrackingActive = false,
+  onToggleTracking,
+  onResetStats,
   onClearTarget,
   onClaimQuest,
   onGoToRadar,
@@ -28,6 +56,21 @@ export const ExpeditionsPage: FC<ExpeditionsPageProps> = ({
 
   return (
     <div className="expeditions-page-view">
+      {/* Cloud Sync Status Banner if Guest */}
+      {!user && onOpenAuth && (
+        <div className="dex-sync-banner" style={{ marginTop: '0', marginBottom: '22px' }}>
+          <div className="sync-status guest" onClick={onOpenAuth}>
+            <Cloud size={15} />
+            <span>
+              <b>Guest Session.</b> Physical steps are recorded on this browser only. Sign in to save your streaks, level & quest badges permanently →
+            </span>
+            <button className="button secondary micro-btn">
+              <UserPlus size={12} /> Sign In
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="expeditions-page-header">
         <div className="expeditions-title-block">
           <div className="eyebrow">
@@ -37,15 +80,63 @@ export const ExpeditionsPage: FC<ExpeditionsPageProps> = ({
           <p>Walk outside, track physical steps, and complete daily exploration missions.</p>
         </div>
 
-        <button
-          className="button primary compact-action-btn"
-          onClick={() => {
-            soundEngine.playBeep(1100, 0.04);
-            onGoToScanner();
-          }}
-        >
-          <Camera size={15} /> Field Scanner
-        </button>
+        <div className="expeditions-header-actions">
+          {onToggleTracking && (
+            <button
+              className={`button ${isTrackingActive ? 'light' : 'secondary'} compact-action-btn`}
+              onClick={onToggleTracking}
+              title={isTrackingActive ? 'Pause GPS stride tracking' : 'Start GPS stride tracking'}
+            >
+              {isTrackingActive ? <Pause size={14} /> : <Play size={14} />}
+              <span>{isTrackingActive ? 'Pause Walk' : 'Start Walk'}</span>
+            </button>
+          )}
+
+          {onResetStats && (
+            <button
+              className="button ghost compact-action-btn"
+              onClick={onResetStats}
+              title="Reset ground distance and steps to 0"
+            >
+              <RotateCcw size={14} />
+              <span>Reset</span>
+            </button>
+          )}
+
+          <button
+            className="button primary compact-action-btn"
+            onClick={() => {
+              soundEngine.playBeep(1100, 0.04);
+              onGoToScanner();
+            }}
+          >
+            <Camera size={14} /> Field Scanner
+          </button>
+        </div>
+      </div>
+
+      {/* Live Session Status Banner */}
+      <div className={`expedition-session-bar ${isTrackingActive ? 'active' : 'idle'}`}>
+        <div className="session-status-info">
+          <span className={`session-beacon-dot ${isTrackingActive ? 'active' : 'idle'}`} />
+          <div>
+            <b>{isTrackingActive ? 'Live GPS Stride Tracking Active' : 'Stride Tracking Paused (Laptop / Indoor Safe)'}</b>
+            <small>
+              {isTrackingActive
+                ? 'High-accuracy tracking enabled. Steps increment as you walk outdoors.'
+                : 'Stationary mode active. Start a walk session when you head outside to track strides.'}
+            </small>
+          </div>
+        </div>
+
+        {onToggleTracking && (
+          <button
+            className={`button micro-btn ${isTrackingActive ? 'ghost' : 'light'}`}
+            onClick={onToggleTracking}
+          >
+            {isTrackingActive ? 'Pause' : 'Start Walk'}
+          </button>
+        )}
       </div>
 
       {activeTargetName && (

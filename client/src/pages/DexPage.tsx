@@ -86,7 +86,7 @@ export const DexPage: FC<DexPageProps> = ({
           <div className="sync-status guest" onClick={onOpenAuth}>
             <Cloud size={15} />
             <span>
-              <b>Saved to local device.</b> Sign in to backup your {cards.length} cards to cloud & level up →
+              <b>Guest Session (1 Free Scan Available).</b> Sign in to build your permanent Dex & sync across devices →
             </span>
             <button className="button secondary micro-btn">
               <UserPlus size={12} /> Sign In
@@ -118,47 +118,78 @@ export const DexPage: FC<DexPageProps> = ({
 
       {/* Cards Grid */}
       {cards.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-symbol">
-            <Leaf size={32} />
+        user ? (
+          <div className="empty-state">
+            <div className="empty-symbol">
+              <Leaf size={32} />
+            </div>
+            <h3>Your Field Dex is Empty</h3>
+            <p>
+              You haven't recorded any flora, fauna, or landscape discoveries yet. Step outside with your camera or launch the field scanner to register your very first real-world specimen!
+            </p>
+            <button
+              className="button primary"
+              onClick={() => {
+                soundEngine.playBeep(1100, 0.05);
+                onGoToScanner();
+              }}
+            >
+              <Camera size={18} /> Launch Field Scanner
+            </button>
           </div>
-          <h3>Field Dex is Ready</h3>
-          <p>
-            You haven't recorded any flora, fauna, or landscape discoveries yet. Launch the field scanner to register your first specimen!
-          </p>
-          <button
-            className="button primary"
-            onClick={() => {
-              soundEngine.playBeep(1100, 0.05);
-              onGoToScanner();
-            }}
-          >
-            <Camera size={18} /> Launch Field Scanner
-          </button>
-
-          {/* Sample preview cards so the screen looks vibrant */}
-          <div className="sample-label">OR TAP A SAMPLE SPECIMEN TO PREVIEW 3D CARD:</div>
-          <div className="sample-grid">
-            {sampleCards.map((card) => (
+        ) : (
+          <div className="empty-state">
+            <div className="empty-symbol">
+              <Leaf size={32} />
+            </div>
+            <h3>Guest Preview Mode</h3>
+            <p>
+              You have <b>1 free trial scan</b> to test JungleDex AI. Tap any sample card below to inspect interactive 3D hologram cards, or use your trial scan!
+            </p>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '22px' }}>
               <button
-                className="sample-card"
-                key={card.id}
+                className="button primary"
                 onClick={() => {
-                  soundEngine.playFanfare();
-                  onSelectCard(card);
+                  soundEngine.playBeep(1100, 0.05);
+                  onGoToScanner();
                 }}
               >
-                <img src={card.image} alt={card.name} />
-                <span>{card.category}</span>
-                <b>{card.name}</b>
-                <small>
-                  <Sparkles size={9} style={{ display: 'inline', marginRight: '4px' }} />
-                  {card.rarity} · Preview in 3D →
-                </small>
+                <Camera size={18} /> Try 1 Free Scan
               </button>
-            ))}
+              <button
+                className="button secondary"
+                onClick={() => {
+                  soundEngine.playBeep(900, 0.05);
+                  onOpenAuth();
+                }}
+              >
+                <UserPlus size={16} /> Sign In to Start Collection
+              </button>
+            </div>
+
+            <div className="sample-label">GUEST PREVIEW · TAP A SAMPLE TO INSPECT 3D CARD:</div>
+            <div className="sample-grid">
+              {sampleCards.map((card) => (
+                <button
+                  className="sample-card"
+                  key={card.id}
+                  onClick={() => {
+                    soundEngine.playFanfare();
+                    onSelectCard(card);
+                  }}
+                >
+                  <img src={card.image} alt={card.name} />
+                  <span>{card.category}</span>
+                  <b>{card.name}</b>
+                  <small>
+                    <Sparkles size={9} style={{ display: 'inline', marginRight: '4px' }} />
+                    {card.rarity} · Preview in 3D →
+                  </small>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )
       ) : filteredCards.length === 0 ? (
         <div className="empty-state compact">
           <p>No discoveries found matching “{query}” in category “{selectedCategory}”.</p>

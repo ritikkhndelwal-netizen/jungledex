@@ -2588,6 +2588,68 @@
   font-weight: 600;
 }
 
+/* Expeditions Header Action Cluster */
+.expeditions-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Live Session Status Banner */
+.expedition-session-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 18px;
+  border-radius: 14px;
+  margin: 16px 0 24px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  transition: all 0.25s ease;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
+}
+.expedition-session-bar.active {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.35);
+}
+.expedition-session-bar.idle {
+  background: var(--surface);
+  border-color: var(--line);
+}
+.session-status-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.session-beacon-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.session-beacon-dot.active {
+  background: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.3);
+  animation: pulse 1.8s infinite;
+}
+.session-beacon-dot.idle {
+  background: #94a3b8;
+  opacity: 0.6;
+}
+.session-status-info b {
+  font-size: 13px;
+  display: block;
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+.session-status-info small {
+  font-size: 11px;
+  color: var(--muted);
+  display: block;
+  line-height: 1.4;
+}
+
 /* Telemetry Grid Large in Expeditions View */
 .telemetry-grid-large {
   display: grid;
@@ -4155,4 +4217,43 @@
   color: #b7c7bc;
   display: block;
 }
+
+/* Guest Trial Badge in Workbench */
+.guest-trial-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 9px;
+  font-size: 11px;
+  line-height: 1.45;
+  margin-top: 14px;
+  transition: all 0.2s ease;
+}
+.guest-trial-badge.available {
+  background: rgba(36, 77, 56, 0.08);
+  border: 1px solid rgba(36, 77, 56, 0.2);
+  color: var(--green);
+}
+.theme-pokedex .guest-trial-badge.available {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #34d399;
+}
+.guest-trial-badge.used {
+  background: rgba(181, 59, 53, 0.08);
+  border: 1px solid rgba(181, 59, 53, 0.25);
+  color: #b53b35;
+  cursor: pointer;
+}
+.guest-trial-badge.used:hover {
+  background: rgba(181, 59, 53, 0.12);
+  transform: translateY(-1px);
+}
+.theme-pokedex .guest-trial-badge.used {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #f87171;
+}
+
 
