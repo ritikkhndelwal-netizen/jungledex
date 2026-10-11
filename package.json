@@ -1,12 +1,21 @@
 {
   "name": "jungledex",
   "private": true,
-  "version": "0.1.0",
-  "workspaces": ["client", "server"],
+  "version": "1.0.0",
+  "description": "The Living World Dex — Turn real-world nature discoveries into holographic 3D cards using Multimodal Vision AI",
+  "license": "MIT",
+  "workspaces": [
+    "client",
+    "server"
+  ],
   "scripts": {
     "dev": "concurrently -k -n API,WEB -c green,blue \"npm run dev -w server\" \"npm run dev -w client\"",
-    "build": "npm run build -w client",
+    "build": "npm run build -w server && npm run build -w client",
+    "build:client": "npm run build -w client",
+    "build:server": "npm run build -w server",
     "start": "npm run start -w server"
   },
-  "devDependencies": { "concurrently": "^9.1.2" }
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
 }
