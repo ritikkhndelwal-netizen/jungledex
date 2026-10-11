@@ -1,4 +1,4 @@
-import { useRef, useState, type FC, type MouseEvent } from 'react';
+import { useRef, useState, useEffect, type FC, type MouseEvent } from 'react';
 import {
   ArrowLeft,
   ChevronLeft,
@@ -15,12 +15,18 @@ import {
   UserPlus,
   ShieldCheck,
   MessageCircle,
+  Send,
+  Leaf,
+  HelpCircle,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { Discovery, UserProfile } from '../types';
 import { DiscoveryCard } from '../components/DiscoveryCard';
 import { soundEngine } from '../services/sound';
-import { shareCardToApi } from '../services/api';
+import { shareCardToApi, askNaturalistChat, type ChatMessage } from '../services/api';
 import { shareCardToFirestore } from '../services/firebase';
 
 interface CardDetailPageProps {
@@ -52,6 +58,77 @@ export const CardDetailPage: FC<CardDetailPageProps> = ({
   const [exporting, setExporting] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // Field Naturalist Companion State (Option 1)
+  const [naturalistOpen, setNaturalistOpen] = useState(true);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
+    {
+      role: 'model',
+      text: `Greetings explorer! 🌿 I am your JungleDex Field Naturalist Guide powered by Google Gemma. What would you like to discover about ${card.name}? Ask me for seasonal spotting windows, identification cues, or dangerous lookalikes!`,
+    },
+  ]);
+  const [inputQuery, setInputQuery] = useState('');
+  const [chatBusy, setChatBusy] = useState(false);
+  const [chatModel, setChatModel] = useState<'gemma-4-26b-a4b-it' | 'gemini-3.5-flash'>('gemma-4-26b-a4b-it');
+  const chatMessagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll chat to latest message
+  useEffect(() => {
+    if (naturalistOpen && chatMessages.length > 1) {
+      chatMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [chatMessages, naturalistOpen]);
+
+  // Reset conversation on card switch
+  useEffect(() => {
+    setChatMessages([
+      {
+        role: 'model',
+        text: `Greetings explorer! 🌿 I am your JungleDex Field Naturalist Guide powered by Google Gemma. What would you like to discover about ${card.name}? Ask me for seasonal spotting windows, identification cues, or dangerous lookalikes!`,
+      },
+    ]);
+    setInputQuery('');
+  }, [card.id]);
+
+  const handleSendNaturalistMessage = async (textToSend?: string) => {
+    const query = (textToSend || inputQuery).trim();
+    if (!query || chatBusy) return;
+
+    setInputQuery('');
+    soundEngine.playBeep(980, 0.03);
+
+    const updatedHistory: ChatMessage[] = [...chatMessages, { role: 'user', text: query }];
+    setChatMessages(updatedHistory);
+    setChatBusy(true);
+
+    try {
+      const res = await askNaturalistChat({
+        specimenName: card.name,
+        category: card.category,
+        scientificName: card.scientificName,
+        description: card.description,
+        message: query,
+        history: updatedHistory,
+        model: chatModel,
+      });
+
+      if (res.ok && res.reply) {
+        soundEngine.playBeep(1150, 0.04);
+        setChatMessages((prev) => [...prev, { role: 'model', text: res.reply }]);
+      }
+    } catch (err) {
+      const errorMsg = (err as Error)?.message || 'Naturalist temporarily unavailable.';
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          role: 'model',
+          text: `⚠️ Field network notice: ${errorMsg}. Please try asking again in a moment!`,
+        },
+      ]);
+    } finally {
+      setChatBusy(false);
+    }
+  };
 
   const exportCard = async () => {
     if (!cardRef.current) return;
@@ -305,7 +382,7 @@ export const CardDetailPage: FC<CardDetailPageProps> = ({
             <p>{card.description}</p>
             {card.modelUsed && (
               <small className="dossier-model-tag">
-                <ShieldCheck size={11} /> Multimodal validation via {card.modelUsed}
+                <ShieldCheck size={11} /> Validated via {card.modelUsed.includes('gemma') ? 'Google Gemma 4' : 'Google Gemini 3.5 Flash'}
               </small>
             )}
           </div>
@@ -351,6 +428,173 @@ export const CardDetailPage: FC<CardDetailPageProps> = ({
                   <small>RECORDED TIMESTAMP</small>
                   <b>{card.date}</b>
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* Interactive Field Naturalist Companion (Option 1) */}
+          <div className="naturalist-drawer">
+            <div className="naturalist-drawer-header">
+              <div className="naturalist-header-main">
+                <div className="naturalist-header-left">
+                  <div className="naturalist-avatar" aria-hidden="true">
+                    <Leaf size={16} />
+                  </div>
+                  <div className="naturalist-title-wrap">
+                    <div className="naturalist-title-row">
+                      <span className="naturalist-title">Field Naturalist Guide</span>
+                      <span className="naturalist-model-pill">
+                        <span className="model-pulse-dot" /> {chatModel.includes('gemma') ? 'Gemma 4' : 'Gemini'}
+                      </span>
+                    </div>
+                    <small className="naturalist-subtitle">Interactive species consultation & observation advice</small>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="naturalist-collapse-btn"
+                  onClick={() => {
+                    soundEngine.playBeep(850, 0.02);
+                    setNaturalistOpen(!naturalistOpen);
+                  }}
+                  aria-label={naturalistOpen ? 'Collapse Naturalist drawer' : 'Expand Naturalist drawer'}
+                >
+                  {naturalistOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </button>
+              </div>
+
+              {/* Model Engine Selector Tabs */}
+              <div className="naturalist-model-selector-bar">
+                <span className="model-bar-label">AI Engine:</span>
+                <div className="naturalist-model-toggle" role="radiogroup" aria-label="Select Naturalist Engine">
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={chatModel.includes('gemma')}
+                    className={`model-toggle-btn ${chatModel.includes('gemma') ? 'active' : ''}`}
+                    onClick={() => {
+                      soundEngine.playBeep(900, 0.02);
+                      setChatModel('gemma-4-26b-a4b-it');
+                    }}
+                    title="Powered by Google Gemma 4 open architecture (26B)"
+                  >
+                    <span className="engine-micro-tag gemma">Gemma</span> Gemma 4 (26B)
+                  </button>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={chatModel.includes('gemini')}
+                    className={`model-toggle-btn ${chatModel.includes('gemini') ? 'active' : ''}`}
+                    onClick={() => {
+                      soundEngine.playBeep(900, 0.02);
+                      setChatModel('gemini-3.5-flash');
+                    }}
+                    title="Powered by Google Gemini 3.5 Flash"
+                  >
+                    <span className="engine-micro-tag gemini">Gemini</span> 3.5 Flash
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {naturalistOpen && (
+              <div className="naturalist-drawer-body">
+                {/* Suggestion Prompts */}
+                <div className="naturalist-quick-chips">
+                  <span className="quick-chips-label">
+                    <HelpCircle size={11} /> Suggested Inquiries:
+                  </span>
+                  <div className="chips-scroller">
+                    <button
+                      type="button"
+                      className="naturalist-chip"
+                      onClick={() => handleSendNaturalistMessage('When is the best season and time of day to spot this in the wild?')}
+                      disabled={chatBusy}
+                    >
+                      🕒 Best season to spot?
+                    </button>
+                    <button
+                      type="button"
+                      className="naturalist-chip"
+                      onClick={() => handleSendNaturalistMessage('Are there any common dangerous or poisonous lookalike species?')}
+                      disabled={chatBusy}
+                    >
+                      ⚠️ Dangerous lookalikes?
+                    </button>
+                    <button
+                      type="button"
+                      className="naturalist-chip"
+                      onClick={() => handleSendNaturalistMessage('What is its ecological role and habitat preservation advice?')}
+                      disabled={chatBusy}
+                    >
+                      🌲 Ecological role?
+                    </button>
+                    <button
+                      type="button"
+                      className="naturalist-chip"
+                      onClick={() => handleSendNaturalistMessage('What are Leave No Trace ethics and safety rules for observing this?')}
+                      disabled={chatBusy}
+                    >
+                      🛡️ Safety & ethics?
+                    </button>
+                  </div>
+                </div>
+
+                {/* Conversation Thread */}
+                <div className="naturalist-messages-box">
+                  {chatMessages.map((msg, idx) => (
+                    <div
+                      key={idx}
+                      className={`naturalist-msg-row ${msg.role === 'user' ? 'user' : 'model'}`}
+                    >
+                      {msg.role === 'model' && (
+                        <div className="msg-avatar-badge" title="JungleDex Naturalist">🌿</div>
+                      )}
+                      <div className={`naturalist-bubble ${msg.role === 'user' ? 'user' : 'model'}`}>
+                        <p>{msg.text}</p>
+                      </div>
+                    </div>
+                  ))}
+
+                  {chatBusy && (
+                    <div className="naturalist-msg-row model">
+                      <div className="msg-avatar-badge">🌿</div>
+                      <div className="naturalist-bubble model thinking">
+                        <Loader2 size={13} className="spin-icon" />
+                        <span>Consulting field records with {chatModel.includes('gemma') ? 'Gemma 4' : 'Gemini'}…</span>
+                      </div>
+                    </div>
+                  )}
+                  <div ref={chatMessagesEndRef} />
+                </div>
+
+                {/* Input Form */}
+                <form
+                  className="naturalist-input-form"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleSendNaturalistMessage();
+                  }}
+                >
+                  <input
+                    type="text"
+                    className="naturalist-text-input"
+                    placeholder={`Ask the Naturalist about ${card.name}…`}
+                    value={inputQuery}
+                    onChange={(e) => setInputQuery(e.target.value)}
+                    disabled={chatBusy}
+                    maxLength={400}
+                  />
+                  <button
+                    type="submit"
+                    className="naturalist-send-btn"
+                    disabled={!inputQuery.trim() || chatBusy}
+                    aria-label="Send inquiry"
+                  >
+                    {chatBusy ? <Loader2 size={15} className="spin-icon" /> : <Send size={15} />}
+                  </button>
+                </form>
               </div>
             )}
           </div>

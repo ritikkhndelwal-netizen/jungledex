@@ -17,6 +17,8 @@ interface ScannerPageProps {
   isOnline?: boolean;
   queuedScansCount?: number;
   syncingQueue?: boolean;
+  selectedModel?: string;
+  onSelectModel?: (model: string) => void;
   onSyncQueue?: () => void;
   onOpenAuth?: () => void;
   onFileSelect: (file: File | null) => void;
@@ -39,6 +41,8 @@ export const ScannerPage: FC<ScannerPageProps> = ({
   isOnline = true,
   queuedScansCount = 0,
   syncingQueue = false,
+  selectedModel,
+  onSelectModel,
   onSyncQueue,
   onOpenAuth,
   onFileSelect,
@@ -87,6 +91,8 @@ export const ScannerPage: FC<ScannerPageProps> = ({
         isOnline={isOnline}
         queuedScansCount={queuedScansCount}
         syncingQueue={syncingQueue}
+        selectedModel={selectedModel}
+        onSelectModel={onSelectModel}
         onSyncQueue={onSyncQueue}
         onOpenAuth={onOpenAuth}
         onFileSelect={onFileSelect}

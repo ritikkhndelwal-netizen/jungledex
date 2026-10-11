@@ -143,6 +143,7 @@ export default function App() {
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [placeLabel, setPlaceLabel] = useState('Location not added');
   const [weather, setWeather] = useState('Weather not loaded');
+  const [selectedEngine, setSelectedEngine] = useState<string>('gemini-3.5-flash');
 
   const lastCoordsRef = useRef<{ latitude: number; longitude: number } | null>(null);
 
@@ -644,7 +645,7 @@ export default function App() {
     soundEngine.playScan();
 
     try {
-      const data = await identifySpecimen(file, coords || undefined, theme);
+      const data = await identifySpecimen(file, coords || undefined, theme, selectedEngine);
 
       const newCard: Discovery = {
         id: crypto.randomUUID(),
@@ -835,6 +836,8 @@ export default function App() {
             isOnline={isOnline}
             queuedScansCount={queuedScans.length}
             syncingQueue={syncingQueue}
+            selectedModel={selectedEngine}
+            onSelectModel={setSelectedEngine}
             onSyncQueue={processQueuedScans}
             onOpenAuth={() => setAuthOpen(true)}
             onFileSelect={handleFileSelect}

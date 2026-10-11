@@ -15,6 +15,8 @@ interface WorkbenchProps {
   isOnline?: boolean;
   queuedScansCount?: number;
   syncingQueue?: boolean;
+  selectedModel?: string;
+  onSelectModel?: (model: string) => void;
   onSyncQueue?: () => void;
   onOpenAuth?: () => void;
   onFileSelect: (file: File | null) => void;
@@ -36,6 +38,8 @@ export const Workbench: FC<WorkbenchProps> = ({
   isOnline = true,
   queuedScansCount = 0,
   syncingQueue = false,
+  selectedModel = 'gemini-3.5-flash',
+  onSelectModel,
   onSyncQueue,
   onOpenAuth,
   onFileSelect,
@@ -98,7 +102,7 @@ export const Workbench: FC<WorkbenchProps> = ({
                     <div className="ar-scan-ring" />
                     <div className="ar-scan-label">
                       <b>Identifying species…</b>
-                      <small>Analyzing with Google Gemini AI</small>
+                      <small>Analyzing with {selectedModel.includes('gemma') ? 'Google Gemma 4' : 'Google Gemini 3.5'}</small>
                     </div>
                   </div>
                 )}
@@ -212,6 +216,49 @@ export const Workbench: FC<WorkbenchProps> = ({
               )}
             </div>
           )}
+
+          {/* AI Inference Engine Selector (Option 2) */}
+          <div className="engine-selector-deck">
+            <div className="engine-selector-header">
+              <span className="engine-selector-tag">
+                <Sparkles size={12} /> AI INFERENCE ENGINE
+              </span>
+              <span className="engine-active-indicator">
+                {selectedModel.includes('gemma') ? 'Open Biodiversity Model' : 'Multimodal Vision'}
+              </span>
+            </div>
+            <div className="engine-chips" role="radiogroup" aria-label="Select AI Engine">
+              <button
+                type="button"
+                role="radio"
+                aria-checked={selectedModel === 'gemini-3.5-flash'}
+                className={`engine-chip ${selectedModel === 'gemini-3.5-flash' ? 'active' : ''}`}
+                onClick={() => onSelectModel?.('gemini-3.5-flash')}
+                title="Google Gemini 3.5 Flash: Ultra-fast multimodal identification"
+              >
+                <div className="engine-chip-top">
+                  <span className="engine-pill gemini">Gemini</span>
+                  <b>3.5 Flash</b>
+                </div>
+                <small>High Speed & Accuracy</small>
+              </button>
+
+              <button
+                type="button"
+                role="radio"
+                aria-checked={selectedModel === 'gemma-4-26b-a4b-it'}
+                className={`engine-chip ${selectedModel === 'gemma-4-26b-a4b-it' ? 'active' : ''}`}
+                onClick={() => onSelectModel?.('gemma-4-26b-a4b-it')}
+                title="Google Gemma 4: Open architecture with deep biodiversity reasoning"
+              >
+                <div className="engine-chip-top">
+                  <span className="engine-pill gemma">Gemma</span>
+                  <b>Gemma 4 (26B)</b>
+                </div>
+                <small>Deep Ecological Reasoning</small>
+              </button>
+            </div>
+          </div>
 
           <div className="upload-actions">
             <button

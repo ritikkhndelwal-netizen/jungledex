@@ -29,7 +29,8 @@ export interface IdentificationResponse {
 export async function identifySpecimen(
   file: File,
   coords?: { latitude: number; longitude: number },
-  theme?: string
+  theme?: string,
+  model?: string
 ): Promise<IdentificationResponse> {
   const form = new FormData();
   form.append('image', file);
@@ -39,6 +40,9 @@ export async function identifySpecimen(
   }
   if (theme) {
     form.append('theme', theme);
+  }
+  if (model) {
+    form.append('model', model);
   }
 
   const response = await fetch(`${API_BASE}/api/identify`, {
@@ -52,6 +56,38 @@ export async function identifySpecimen(
   }
 
   return data as IdentificationResponse;
+}
+
+export interface ChatMessage {
+  role: 'user' | 'model';
+  text: string;
+}
+
+export interface ChatResponse {
+  ok: boolean;
+  reply: string;
+  modelUsed?: string;
+}
+
+export async function askNaturalistChat(params: {
+  specimenName: string;
+  category: string;
+  scientificName?: string;
+  description?: string;
+  message: string;
+  history?: ChatMessage[];
+  model?: string;
+}): Promise<ChatResponse> {
+  const res = await fetch(`${API_BASE}/api/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || 'The Field Naturalist could not respond. Please try again.');
+  }
+  return data as ChatResponse;
 }
 
 export async function shareCardToApi(card: unknown): Promise<boolean> {
