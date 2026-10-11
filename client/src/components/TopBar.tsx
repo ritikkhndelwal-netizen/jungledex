@@ -10,6 +10,8 @@ interface TopBarProps {
   cardsCount: number;
   health: HealthStatus | null;
   user: UserProfile | null;
+  isOnline?: boolean;
+  queuedScansCount?: number;
   activeView: ActiveView;
   onSelectView: (v: ActiveView) => void;
   onOpenAuth: () => void;
@@ -21,6 +23,8 @@ export const TopBar: FC<TopBarProps> = ({
   cardsCount,
   health,
   user,
+  isOnline = true,
+  queuedScansCount = 0,
   activeView,
   onSelectView,
   onOpenAuth,
@@ -160,7 +164,23 @@ export const TopBar: FC<TopBarProps> = ({
           <span className="profile-btn-label">{user ? (user.displayName?.split(' ')[0] || 'Profile') : 'Sign In'}</span>
         </button>
 
-        {health && (
+        {!isOnline ? (
+          <span
+            className="api-status-badge offline"
+            title="Device is offline. Discoveries and field notes are cached locally."
+          >
+            <span className="status-dot red" />
+            <span className="api-status-text">Offline</span>
+          </span>
+        ) : queuedScansCount > 0 ? (
+          <span
+            className="api-status-badge queue"
+            title={`${queuedScansCount} offline photo(s) queued for AI identification.`}
+          >
+            <span className="status-dot amber" />
+            <span className="api-status-text">{queuedScansCount} Queued</span>
+          </span>
+        ) : health && (
           <span
             className="api-status-badge"
             title={

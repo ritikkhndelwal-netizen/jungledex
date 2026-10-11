@@ -4256,4 +4256,19 @@
   color: #f87171;
 }
 
+.spin-icon {
+  animation: spin 1s linear infinite;
+}
+
+.api-status-badge.offline {
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #ef4444;
+}
+
+.api-status-badge.queue {
+  border-color: rgba(217, 155, 38, 0.45);
+  color: #d99b26;
+}
+
+
 

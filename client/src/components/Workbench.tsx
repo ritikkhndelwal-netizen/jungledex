@@ -1,5 +1,5 @@
 import { useRef, type FC, type DragEvent } from 'react';
-import { Camera, CloudSun, MapPin, Sparkles, Upload, X, Check, Leaf, UserPlus } from 'lucide-react';
+import { Camera, CloudSun, MapPin, Sparkles, Upload, X, Check, Leaf, UserPlus, WifiOff, RefreshCw } from 'lucide-react';
 import { UserProfile } from '../types';
 
 interface WorkbenchProps {
@@ -12,6 +12,10 @@ interface WorkbenchProps {
   weather: string;
   user?: UserProfile | null;
   guestScansUsed?: number;
+  isOnline?: boolean;
+  queuedScansCount?: number;
+  syncingQueue?: boolean;
+  onSyncQueue?: () => void;
   onOpenAuth?: () => void;
   onFileSelect: (file: File | null) => void;
   onClearPhoto: () => void;
@@ -29,6 +33,10 @@ export const Workbench: FC<WorkbenchProps> = ({
   weather,
   user,
   guestScansUsed = 0,
+  isOnline = true,
+  queuedScansCount = 0,
+  syncingQueue = false,
+  onSyncQueue,
   onOpenAuth,
   onFileSelect,
   onClearPhoto,
@@ -149,8 +157,40 @@ export const Workbench: FC<WorkbenchProps> = ({
             </button>
           )}
 
+          {/* Offline Mode Banner */}
+          {!isOnline && (
+            <div className="guest-trial-badge used" style={{ background: 'rgba(217, 155, 38, 0.1)', borderColor: 'rgba(217, 155, 38, 0.3)', color: '#d99b26' }}>
+              <WifiOff size={14} />
+              <span>
+                <b>Wilderness Offline Mode:</b> No internet signal. Photos will be saved to your Field Queue and identified once connection returns.
+              </span>
+            </div>
+          )}
+
+          {/* Queued Scans Sync Banner if online */}
+          {isOnline && queuedScansCount > 0 && (
+            <div className="guest-trial-badge available" style={{ justifyContent: 'space-between', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <RefreshCw size={14} className={syncingQueue ? 'spin-icon' : ''} />
+                <span>
+                  <b>{queuedScansCount} Offline Observation{queuedScansCount > 1 ? 's' : ''}</b> in Field Queue.
+                </span>
+              </div>
+              {onSyncQueue && (
+                <button
+                  className="button primary micro-btn"
+                  onClick={onSyncQueue}
+                  disabled={syncingQueue}
+                  style={{ padding: '6px 12px', fontSize: '11px', height: 'auto' }}
+                >
+                  {syncingQueue ? 'Processing…' : 'Sync Queue Now'}
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Guest 1-Scan Trial Notice */}
-          {!user && (
+          {isOnline && !user && (
             <div
               className={`guest-trial-badge ${guestScansUsed >= 1 ? 'used' : 'available'}`}
               onClick={guestScansUsed >= 1 ? onOpenAuth : undefined}
@@ -182,7 +222,16 @@ export const Workbench: FC<WorkbenchProps> = ({
               {photo ? 'Change photo' : 'Choose / Capture Photo'}
             </button>
 
-            {!user && guestScansUsed >= 1 ? (
+            {!isOnline ? (
+              <button
+                className="button primary"
+                onClick={onIdentify}
+                disabled={!file || busy}
+                title="Save observation to offline queue"
+              >
+                <WifiOff size={17} /> Save to Offline Queue
+              </button>
+            ) : !user && guestScansUsed >= 1 ? (
               <button
                 className="button primary"
                 onClick={onOpenAuth}

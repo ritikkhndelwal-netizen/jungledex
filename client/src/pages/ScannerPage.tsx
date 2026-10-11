@@ -14,6 +14,10 @@ interface ScannerPageProps {
   weather: string;
   user?: UserProfile | null;
   guestScansUsed?: number;
+  isOnline?: boolean;
+  queuedScansCount?: number;
+  syncingQueue?: boolean;
+  onSyncQueue?: () => void;
   onOpenAuth?: () => void;
   onFileSelect: (file: File | null) => void;
   onClearPhoto: () => void;
@@ -32,6 +36,10 @@ export const ScannerPage: FC<ScannerPageProps> = ({
   weather,
   user,
   guestScansUsed = 0,
+  isOnline = true,
+  queuedScansCount = 0,
+  syncingQueue = false,
+  onSyncQueue,
   onOpenAuth,
   onFileSelect,
   onClearPhoto,
@@ -76,6 +84,10 @@ export const ScannerPage: FC<ScannerPageProps> = ({
         weather={weather}
         user={user}
         guestScansUsed={guestScansUsed}
+        isOnline={isOnline}
+        queuedScansCount={queuedScansCount}
+        syncingQueue={syncingQueue}
+        onSyncQueue={onSyncQueue}
         onOpenAuth={onOpenAuth}
         onFileSelect={onFileSelect}
         onClearPhoto={onClearPhoto}

@@ -1,6 +1,16 @@
 import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import { Discovery, ThemeType, HealthStatus, UserProfile, Quest, RadarSpecimen } from './types';
-import { getStoredCards, saveCardToDB, deleteCardFromDB, fileToDataUrl } from './services/db';
+import {
+  getStoredCards,
+  saveCardToDB,
+  deleteCardFromDB,
+  fileToDataUrl,
+  getQueuedScans,
+  queueOfflineScan,
+  removeQueuedScan,
+  dataUrlToFile,
+  type QueuedScan,
+} from './services/db';
 import { checkApiHealth, identifySpecimen } from './services/api';
 import { reverseGeocodeLocation, fetchWeatherInfo } from './services/geo';
 import {
@@ -111,6 +121,11 @@ export default function App() {
       return 0;
     }
   });
+
+  // Offline & Queued Field Scans
+  const [isOnline, setIsOnline] = useState<boolean>(() => typeof navigator !== 'undefined' ? navigator.onLine : true);
+  const [queuedScans, setQueuedScans] = useState<QueuedScan[]>([]);
+  const [syncingQueue, setSyncingQueue] = useState<boolean>(false);
 
   // Expeditions & Quests State
   const [expeditionStats, setExpeditionStats] = useState<ExpeditionStats>(getStoredExpeditionStats());
@@ -261,8 +276,29 @@ export default function App() {
       }
     });
 
+    // Load offline queued scans
+    getQueuedScans().then((queued) => {
+      setQueuedScans(queued);
+    });
+
+    const handleOnline = () => {
+      setIsOnline(true);
+      setToast('📶 Signal Restored: Device is back online!');
+      soundEngine.playBeep(980, 0.05);
+    };
+
+    const handleOffline = () => {
+      setIsOnline(false);
+      setToast('📶 Offline: Photos will be saved to your Field Queue.');
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
     return () => {
       unsubscribeAuth();
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
     };
   }, []);
 
@@ -486,6 +522,67 @@ export default function App() {
     setToast('Expedition telemetry reset back to 0.');
   };
 
+  // Process offline queued scans when connection is restored
+  const processQueuedScans = async () => {
+    if (!navigator.onLine || syncingQueue || queuedScans.length === 0) return;
+    setSyncingQueue(true);
+    setToast(`Processing ${queuedScans.length} queued field observation(s)…`);
+
+    for (const item of queuedScans) {
+      try {
+        const queueFile = dataUrlToFile(item.photoDataUrl, 'field-observation.jpg');
+        const data = await identifySpecimen(queueFile, item.coordinates, (item.theme as ThemeType) || theme);
+
+        const newCard: Discovery = {
+          id: crypto.randomUUID(),
+          name: data.name || 'Nature Discovery',
+          scientificName: data.scientificName || 'Species / Phenomenon unconfirmed',
+          category: data.category || 'Nature',
+          rarity: data.rarity || 'Discovery',
+          confidence: data.confidence || 'Verified AI Observation',
+          description: data.description || 'A new observation from your outdoor adventure.',
+          facts: Array.isArray(data.facts) ? data.facts.slice(0, 3) : [],
+          image: item.photoDataUrl,
+          date: new Date(item.timestamp).toLocaleDateString(undefined, {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+          }),
+          location: item.placeLabel,
+          coordinates: item.coordinates,
+          weather: item.weather,
+          theme: (item.theme as ThemeType) || theme,
+          modelUsed: data.modelUsed,
+          isAiGenerated: data.isAiGenerated,
+          aiGenerationReason: data.aiGenerationReason,
+          userId: user?.uid,
+        };
+
+        await saveCardToDB(newCard);
+        if (user) {
+          await syncCardToCloud(user.uid, newCard);
+        }
+        await removeQueuedScan(item.id);
+
+        setCards((prev) => [newCard, ...prev]);
+        setQueuedScans((prev) => prev.filter((q) => q.id !== item.id));
+        soundEngine.playFanfare();
+        setToast(`🎉 Field Discovery Processed: "${newCard.name}" added to your Dex!`);
+      } catch (err) {
+        console.warn('[Queue Process Error]:', err);
+        break;
+      }
+    }
+    setSyncingQueue(false);
+  };
+
+  // Automatically process queue when connection is restored
+  useEffect(() => {
+    if (isOnline && queuedScans.length > 0 && !syncingQueue) {
+      processQueuedScans();
+    }
+  }, [isOnline, queuedScans.length]);
+
   // AI Identification trigger
   const handleIdentify = async () => {
     if (!file || !photo) {
@@ -498,6 +595,27 @@ export default function App() {
       soundEngine.playBeep(600, 0.08);
       setToast("You've used your 1 free guest scan! Create a free account or sign in to continue scanning.");
       setAuthOpen(true);
+      return;
+    }
+
+    // Offline Queue trigger: if device is offline, save observation locally
+    if (!navigator.onLine) {
+      const scanId = crypto.randomUUID();
+      const queuedItem: QueuedScan = {
+        id: scanId,
+        photoDataUrl: photo,
+        coordinates: coords || undefined,
+        placeLabel: locationEnabled ? placeLabel : undefined,
+        weather: locationEnabled ? weather : undefined,
+        timestamp: Date.now(),
+        theme,
+      };
+      await queueOfflineScan(queuedItem);
+      setQueuedScans((prev) => [...prev, queuedItem]);
+      setPhoto(null);
+      setFile(null);
+      soundEngine.playBeep(750, 0.08);
+      setToast('📶 Offline: Photo saved to Field Queue! It will identify automatically when connection returns.');
       return;
     }
 
@@ -586,7 +704,27 @@ export default function App() {
             : `Discovery recorded: "${newCard.name}"!`
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Identification failed. Please try again.');
+      const message = err instanceof Error ? err.message : 'Identification failed. Please try again.';
+      if (message.includes('fetch failed') || message.includes('Failed to fetch') || !navigator.onLine) {
+        const scanId = crypto.randomUUID();
+        const queuedItem: QueuedScan = {
+          id: scanId,
+          photoDataUrl: photo,
+          coordinates: coords || undefined,
+          placeLabel: locationEnabled ? placeLabel : undefined,
+          weather: locationEnabled ? weather : undefined,
+          timestamp: Date.now(),
+          theme,
+        };
+        await queueOfflineScan(queuedItem);
+        setQueuedScans((prev) => [...prev, queuedItem]);
+        setPhoto(null);
+        setFile(null);
+        soundEngine.playBeep(750, 0.08);
+        setToast('📶 Signal dropped. Observation saved to Field Queue for auto-sync!');
+      } else {
+        setError(message);
+      }
     } finally {
       setBusy(false);
     }
@@ -624,6 +762,8 @@ export default function App() {
         cardsCount={cards.length}
         health={health}
         user={user}
+        isOnline={isOnline}
+        queuedScansCount={queuedScans.length}
         activeView={activeView}
         onSelectView={changeView}
         onOpenAuth={() => setAuthOpen(true)}
@@ -672,6 +812,10 @@ export default function App() {
             weather={weather}
             user={user}
             guestScansUsed={guestScansUsed}
+            isOnline={isOnline}
+            queuedScansCount={queuedScans.length}
+            syncingQueue={syncingQueue}
+            onSyncQueue={processQueuedScans}
             onOpenAuth={() => setAuthOpen(true)}
             onFileSelect={handleFileSelect}
             onClearPhoto={handleClearPhoto}
