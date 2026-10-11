@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#071910" />
+      <stop offset="50%" stop-color="#0c291b" />
+      <stop offset="100%" stop-color="#05140d" />
+    </linearGradient>
+
+    <!-- Emerald Leaf Gradient -->
+    <linearGradient id="leafGrad" x1="20%" y1="0%" x2="80%" y2="100%">
+      <stop offset="0%" stop-color="#34d399" />
+      <stop offset="40%" stop-color="#10b981" />
+      <stop offset="85%" stop-color="#047857" />
+      <stop offset="100%" stop-color="#064e3b" />
+    </linearGradient>
+
+    <!-- Sun & Gold Accent Gradient -->
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a" />
+      <stop offset="40%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#d97706" />
+    </linearGradient>
+
+    <!-- Holographic Shimmer -->
+    <linearGradient id="holoShimmer" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.8" />
+      <stop offset="50%" stop-color="#a855f7" stop-opacity="0.6" />
+      <stop offset="100%" stop-color="#f43f5e" stop-opacity="0.8" />
+    </linearGradient>
+
+    <!-- Soft Ambient Glow Filter -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="16" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Squircle Base with Metallic Rim -->
+  <rect x="24" y="24" width="464" height="464" rx="112" fill="url(#bgGrad)" stroke="#1a4731" stroke-width="8" />
+
+  <!-- Outer Holographic Radar Ring -->
+  <circle cx="256" cy="256" r="190" fill="none" stroke="url(#goldGrad)" stroke-width="4" stroke-opacity="0.35" stroke-dasharray="12 16" />
+  <circle cx="256" cy="256" r="150" fill="none" stroke="#10b981" stroke-width="2" stroke-opacity="0.25" />
+
+  <!-- Cardinal Compass Pips -->
+  <circle cx="256" cy="66" r="6" fill="#f59e0b" />
+  <circle cx="256" cy="446" r="6" fill="#f59e0b" />
+  <circle cx="66" cy="256" r="6" fill="#f59e0b" />
+  <circle cx="446" cy="256" r="6" fill="#f59e0b" />
+
+  <!-- Center Ambient Glow -->
+  <circle cx="256" cy="256" r="110" fill="#10b981" opacity="0.18" filter="url(#glow)" />
+
+  <!-- The JungleDex Monstera / Explorer Leaf -->
+  <path d="M 256 95 
+           C 340 100 405 180 400 280 
+           C 395 365 330 415 256 425 
+           C 182 415 117 365 112 280 
+           C 107 180 172 100 256 95 Z" 
+        fill="url(#leafGrad)" />
+
+  <!-- Leaf Fenestrations / Cuts (Iconic Monstera Look) -->
+  <path d="M 256 120 
+           C 256 190 256 310 256 415" 
+        stroke="url(#goldGrad)" stroke-width="8" stroke-linecap="round" />
+
+  <!-- Right Leaf Veins / Ribs -->
+  <path d="M 256 170 Q 315 160 365 140" stroke="#064e3b" stroke-width="7" stroke-linecap="round" />
+  <path d="M 256 220 Q 335 220 380 215" stroke="#064e3b" stroke-width="7" stroke-linecap="round" />
+  <path d="M 256 270 Q 330 290 365 310" stroke="#064e3b" stroke-width="7" stroke-linecap="round" />
+  <path d="M 256 320 Q 310 350 330 380" stroke="#064e3b" stroke-width="6" stroke-linecap="round" />
+
+  <!-- Left Leaf Veins / Ribs -->
+  <path d="M 256 170 Q 197 160 147 140" stroke="#064e3b" stroke-width="7" stroke-linecap="round" />
+  <path d="M 256 220 Q 177 220 132 215" stroke="#064e3b" stroke-width="7" stroke-linecap="round" />
+  <path d="M 256 270 Q 182 290 147 310" stroke="#064e3b" stroke-width="7" stroke-linecap="round" />
+  <path d="M 256 320 Q 202 350 182 380" stroke="#064e3b" stroke-width="6" stroke-linecap="round" />
+
+  <!-- Golden Holographic Star Diamond in Top Right -->
+  <path d="M 370 120 L 378 138 L 396 146 L 378 154 L 370 172 L 362 154 L 344 146 L 362 138 Z" fill="url(#goldGrad)" />
+  <circle cx="370" cy="146" r="3" fill="#fff" />
+
+  <!-- Mini Holographic Sparkle Bottom Left -->
+  <path d="M 130 350 L 135 362 L 147 367 L 135 372 L 130 384 L 125 372 L 113 367 L 125 362 Z" fill="#6ee7b7" opacity="0.9" />
+</svg>

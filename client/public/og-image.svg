@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#05140d" />
+      <stop offset="50%" stop-color="#0c291b" />
+      <stop offset="100%" stop-color="#04110b" />
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a" />
+      <stop offset="50%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#d97706" />
+    </linearGradient>
+    <linearGradient id="emerald" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="30" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)" />
+
+  <!-- Ambient Glow -->
+  <circle cx="280" cy="315" r="260" fill="#10b981" opacity="0.12" filter="url(#glow)" />
+  <circle cx="950" cy="200" r="220" fill="#f59e0b" opacity="0.08" filter="url(#glow)" />
+
+  <!-- Grid overlay -->
+  <path d="M 0 150 L 1200 150 M 0 315 L 1200 315 M 0 480 L 1200 480 M 300 0 L 300 630 M 600 0 L 600 630 M 900 0 L 900 630" stroke="#163826" stroke-width="1" stroke-opacity="0.3" stroke-dasharray="4 8" />
+
+  <!-- Brand Eyebrow -->
+  <rect x="100" y="110" width="180" height="34" rx="17" fill="#143c26" stroke="#23603d" stroke-width="1.5" />
+  <text x="190" y="132" fill="#34d399" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="700" letter-spacing="2" text-anchor="middle">NATURE EXPLORATION DEX</text>
+
+  <!-- Title -->
+  <text x="100" y="220" fill="#fffef8" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="64" font-weight="900" letter-spacing="-1">JungleDex</text>
+
+  <!-- Subtitle -->
+  <text x="100" y="275" fill="#f59e0b" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="700">Turn Real-World Discoveries into Holographic Cards</text>
+
+  <!-- Description paragraph -->
+  <text x="100" y="340" fill="#a7bfb0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20" font-weight="400">
+    <tspan x="100" dy="0">Snap photos of wildlife, flora, and scenic landscapes on outdoor walks.</tspan>
+    <tspan x="100" dy="32">AI identifies the species, verifies rarity, and mints an interactive 3D card.</tspan>
+  </text>
+
+  <!-- Feature Pills -->
+  <g transform="translate(100, 440)">
+    <rect x="0" y="0" width="190" height="42" rx="10" fill="#0d2417" stroke="#1a4730" stroke-width="1" />
+    <text x="95" y="26" fill="#ecfdf5" font-family="sans-serif" font-size="14" font-weight="600" text-anchor="middle">🌿 AI Species ID</text>
+
+    <rect x="205" y="0" width="220" height="42" rx="10" fill="#0d2417" stroke="#1a4730" stroke-width="1" />
+    <text x="315" y="26" fill="#ecfdf5" font-family="sans-serif" font-size="14" font-weight="600" text-anchor="middle">✨ Holographic Cards</text>
+
+    <rect x="440" y="0" width="220" height="42" rx="10" fill="#0d2417" stroke="#1a4730" stroke-width="1" />
+    <text x="550" y="26" fill="#ecfdf5" font-family="sans-serif" font-size="14" font-weight="600" text-anchor="middle">🛰️ Biodiversity Radar</text>
+  </g>
+
+  <!-- Specimen Card Mockup on Right -->
+  <g transform="translate(860, 95)">
+    <!-- Card Shadow -->
+    <rect x="15" y="25" width="260" height="420" rx="22" fill="#000" opacity="0.6" filter="url(#glow)" />
+    <!-- Outer Card Foil -->
+    <rect x="0" y="0" width="260" height="420" rx="20" fill="#0c2317" stroke="url(#gold)" stroke-width="3.5" />
+    <!-- Card Header -->
+    <text x="24" y="40" fill="#34d399" font-family="monospace" font-size="11" font-weight="700">#0001 • EPIC</text>
+    <text x="24" y="65" fill="#fff" font-family="sans-serif" font-size="18" font-weight="800">Monarch Butterfly</text>
+    <!-- Card Photo Frame -->
+    <rect x="20" y="85" width="220" height="200" rx="12" fill="#133523" stroke="#255a3c" stroke-width="1" />
+    <!-- Butterfly Silhouette -->
+    <path d="M 130 185 C 100 130 50 140 70 190 C 80 220 120 220 130 200 C 140 220 180 220 190 190 C 210 140 160 130 130 185 Z" fill="url(#gold)" opacity="0.85" />
+    <!-- Card Stats / Description -->
+    <rect x="20" y="300" width="220" height="95" rx="8" fill="#091b12" />
+    <text x="32" y="328" fill="#d1fae5" font-family="sans-serif" font-size="12" font-weight="600">Danaus plexippus</text>
+    <text x="32" y="352" fill="#a7bfb0" font-family="sans-serif" font-size="10">Known for 3,000-mile migrations</text>
+    <text x="32" y="375" fill="#f59e0b" font-family="monospace" font-size="10">★ ★ ★ ★ ★ CONFIRMED</text>
+  </g>
+</svg>
