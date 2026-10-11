@@ -19,20 +19,18 @@ services:
         sync: false # Enter your Google AI Studio API key in Render dashboard
 
   # 2. Frontend Static Site (React 18 + Vite PWA)
-  - type: static
+  - type: web
     name: jungledex-web
+    runtime: static
     buildCommand: npm install && npm run build -w client
-    publishPath: client/dist
+    staticPublishPath: client/dist
     routes:
       - type: rewrite
         source: /*
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        fromService:
-          type: web
-          name: jungledex-api
-          property: host
+        value: https://jungledex-api.onrender.com # Set to your deployed jungledex-api URL
       # Firebase Google Authentication & Cloud Firestore Variables:
       - key: VITE_FIREBASE_API_KEY
         sync: false
