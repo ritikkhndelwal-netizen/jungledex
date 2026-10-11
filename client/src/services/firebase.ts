@@ -18,9 +18,12 @@ import {
   setDoc,
   getDoc,
   getDocs,
+  onSnapshot,
   type Firestore,
+  type Unsubscribe,
 } from 'firebase/firestore';
 import { Discovery, UserProfile } from '../types';
+import { compressImageForCloud } from './imageCompression';
 
 function getFirebaseConfigFromEnv() {
   const apiKey = import.meta.env.VITE_FIREBASE_API_KEY?.trim();
@@ -147,22 +150,80 @@ export async function logoutUser(): Promise<void> {
   }
 }
 
-// Sync card to Firestore collection
-export async function syncCardToCloud(userId: string, card: Discovery): Promise<void> {
-  if (!db) return;
+// Strip undefined values which Firestore rejects
+function sanitizeForFirestore<T>(data: T): any {
+  if (data === null || data === undefined) {
+    return null;
+  }
+  if (Array.isArray(data)) {
+    return data.map((item) => sanitizeForFirestore(item));
+  }
+  if (typeof data === 'object') {
+    const cleaned: Record<string, any> = {};
+    for (const [key, value] of Object.entries(data as Record<string, any>)) {
+      if (value !== undefined) {
+        cleaned[key] = sanitizeForFirestore(value);
+      }
+    }
+    return cleaned;
+  }
+  return data;
+}
+
+// Sync card to Firestore collection with automatic size optimization
+export async function syncCardToCloud(userId: string, card: Discovery): Promise<boolean> {
+  if (!db) return false;
   try {
-    const cardRef = doc(db, 'users', userId, 'discoveries', card.id);
-    await setDoc(cardRef, {
+    // Compress base64 camera image to fit comfortably under Firestore's 1MB limit
+    let optimizedImage = card.image;
+    if (optimizedImage && optimizedImage.length > 300000) {
+      optimizedImage = await compressImageForCloud(optimizedImage, 1080, 0.72);
+    }
+
+    const payload = sanitizeForFirestore({
       ...card,
+      image: optimizedImage,
       syncedToCloud: true,
       updatedAt: new Date().toISOString(),
     });
+
+    const cardRef = doc(db, 'users', userId, 'discoveries', card.id);
+    await setDoc(cardRef, payload);
+    return true;
   } catch (err) {
     console.warn('[Firestore Sync Warning]:', err);
+    return false;
   }
 }
 
-// Fetch user's discoveries from Firestore
+// Subscribe to real-time updates for a user's discoveries across devices
+export function subscribeToUserCards(
+  userId: string,
+  onUpdate: (cards: Discovery[]) => void
+): Unsubscribe {
+  if (!db) return () => {};
+  try {
+    const cardsCol = collection(db, 'users', userId, 'discoveries');
+    return onSnapshot(
+      cardsCol,
+      (snap) => {
+        const results: Discovery[] = [];
+        snap.forEach((d) => {
+          results.push(d.data() as Discovery);
+        });
+        onUpdate(results);
+      },
+      (err) => {
+        console.warn('[Firestore Real-Time Sync Warning]:', err);
+      }
+    );
+  } catch (err) {
+    console.warn('[Firestore Subscription Error]:', err);
+    return () => {};
+  }
+}
+
+// Fetch user's discoveries from Firestore (one-time fetch)
 export async function fetchCardsFromCloud(userId: string): Promise<Discovery[]> {
   if (!db) return [];
   try {
@@ -183,11 +244,17 @@ export async function fetchCardsFromCloud(userId: string): Promise<Discovery[]> 
 export async function shareCardToFirestore(card: Discovery): Promise<void> {
   if (!db) return;
   try {
+    let optimizedImage = card.image;
+    if (optimizedImage && optimizedImage.length > 300000) {
+      optimizedImage = await compressImageForCloud(optimizedImage, 1080, 0.72);
+    }
     const cardRef = doc(db, 'public_cards', card.id);
-    await setDoc(cardRef, {
+    const payload = sanitizeForFirestore({
       ...card,
+      image: optimizedImage,
       sharedAt: new Date().toISOString(),
     });
+    await setDoc(cardRef, payload);
   } catch (err) {
     console.warn('[Firestore Public Share Warning]:', err);
   }

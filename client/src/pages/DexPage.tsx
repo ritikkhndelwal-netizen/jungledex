@@ -1,5 +1,5 @@
 import { useState, type FC, type MouseEvent } from 'react';
-import { Camera, Leaf, Search, Trash2, Bot, Sparkles, UserPlus, Cloud, CheckCircle2, HelpCircle } from 'lucide-react';
+import { Camera, Leaf, Search, Trash2, Bot, Sparkles, UserPlus, Cloud, CheckCircle2, HelpCircle, RefreshCw } from 'lucide-react';
 import { Discovery, UserProfile } from '../types';
 import { TaxonomyBar } from '../components/TaxonomyBar';
 import { soundEngine } from '../services/sound';
@@ -8,6 +8,8 @@ interface DexPageProps {
   cards: Discovery[];
   sampleCards: Discovery[];
   user: UserProfile | null;
+  isSyncingCloud?: boolean;
+  onSyncWithCloud?: () => void;
   onSelectCard: (card: Discovery) => void;
   onDeleteCard: (id: string, e: MouseEvent) => void;
   onGoToScanner: () => void;
@@ -18,6 +20,8 @@ export const DexPage: FC<DexPageProps> = ({
   cards,
   sampleCards,
   user,
+  isSyncingCloud,
+  onSyncWithCloud,
   onSelectCard,
   onDeleteCard,
   onGoToScanner,
@@ -79,8 +83,22 @@ export const DexPage: FC<DexPageProps> = ({
       <div className="dex-sync-banner">
         {user ? (
           <div className="sync-status active">
-            <CheckCircle2 size={15} />
-            <span>Cloud Sync Active for <b>{user.displayName || user.email || 'Explorer'}</b></span>
+            <div className="sync-status-info">
+              <CheckCircle2 size={15} />
+              <span>Cloud Sync Active for <b>{user.displayName || user.email || 'Explorer'}</b></span>
+            </div>
+            {onSyncWithCloud && (
+              <button
+                type="button"
+                className="dex-sync-now-btn"
+                onClick={onSyncWithCloud}
+                disabled={isSyncingCloud}
+                title="Force refresh discoveries from Google Firestore"
+              >
+                <RefreshCw size={12} className={isSyncingCloud ? 'spin-icon' : ''} />
+                <span>{isSyncingCloud ? 'Syncing…' : 'Sync Now'}</span>
+              </button>
+            )}
           </div>
         ) : (
           <div className="sync-status guest" onClick={onOpenAuth}>

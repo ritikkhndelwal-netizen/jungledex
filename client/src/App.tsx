@@ -18,7 +18,9 @@ import {
   syncCardToCloud,
   fetchCardsFromCloud,
   fetchSharedCardFromFirestore,
+  subscribeToUserCards,
 } from './services/firebase';
+import { compressImageForCloud } from './services/imageCompression';
 import {
   getStoredExpeditionStats,
   saveExpeditionStats,
@@ -144,8 +146,10 @@ export default function App() {
   const [placeLabel, setPlaceLabel] = useState('Location not added');
   const [weather, setWeather] = useState('Weather not loaded');
   const [selectedEngine, setSelectedEngine] = useState<string>('gemini-3.5-flash');
+  const [isSyncingCloud, setIsSyncingCloud] = useState<boolean>(false);
 
   const lastCoordsRef = useRef<{ latitude: number; longitude: number } | null>(null);
+  const unsubscribeCardsRef = useRef<(() => void) | null>(null);
 
   // Map internal views to friendly URL hashes for multi-page routing
   const viewToHash = (v: ActiveView, cardId?: string): string => {
@@ -280,19 +284,34 @@ export default function App() {
           }
         });
 
-        // Fetch cloud cards and merge with local collection
-        fetchCardsFromCloud(profile.uid).then((cloudCards) => {
-          if (cloudCards.length > 0) {
+        // Clean up previous cards listener if any
+        if (unsubscribeCardsRef.current) {
+          unsubscribeCardsRef.current();
+          unsubscribeCardsRef.current = null;
+        }
+
+        // Real-time synchronization across devices
+        unsubscribeCardsRef.current = subscribeToUserCards(profile.uid, async (cloudCards) => {
+          if (cloudCards && cloudCards.length > 0) {
+            for (const c of cloudCards) {
+              await saveCardToDB(c);
+            }
             setCards((prev) => {
-              const existingIds = new Set(prev.map((c) => c.id));
-              const fresh = cloudCards.filter((c) => !existingIds.has(c.id));
-              fresh.forEach((c) => saveCardToDB(c));
-              return [...fresh, ...prev];
+              const map = new Map<string, Discovery>();
+              for (const card of prev) map.set(card.id, card);
+              for (const card of cloudCards) map.set(card.id, card);
+              return Array.from(map.values()).sort((a, b) => {
+                return (b.date || '').localeCompare(a.date || '');
+              });
             });
           }
         });
       } else {
-        // Logged out: return to clean landing page
+        // Logged out: clean up live card listener & return to landing page
+        if (unsubscribeCardsRef.current) {
+          unsubscribeCardsRef.current();
+          unsubscribeCardsRef.current = null;
+        }
         setActiveView('landing');
       }
     });
@@ -318,6 +337,9 @@ export default function App() {
 
     return () => {
       unsubscribeAuth();
+      if (unsubscribeCardsRef.current) {
+        unsubscribeCardsRef.current();
+      }
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
@@ -647,6 +669,9 @@ export default function App() {
     try {
       const data = await identifySpecimen(file, coords || undefined, theme, selectedEngine);
 
+      // Compress photo to ensure it fits under Firestore's 1MB document limit
+      const optimizedPhoto = await compressImageForCloud(photo);
+
       const newCard: Discovery = {
         id: crypto.randomUUID(),
         name: data.name || 'Nature Discovery',
@@ -656,7 +681,7 @@ export default function App() {
         confidence: data.confidence || 'Verified AI Observation',
         description: data.description || 'A new observation from your outdoor adventure.',
         facts: Array.isArray(data.facts) ? data.facts.slice(0, 3) : [],
-        image: photo,
+        image: optimizedPhoto,
         date: new Date().toLocaleDateString(undefined, {
           year: 'numeric',
           month: 'short',
@@ -677,7 +702,12 @@ export default function App() {
 
       // Cloud Sync if authenticated
       if (user) {
-        await syncCardToCloud(user.uid, newCard);
+        const synced = await syncCardToCloud(user.uid, newCard);
+        if (synced) {
+          setToast(`🌿 "${newCard.name}" discovered & synced across your devices!`);
+        } else {
+          setToast(`🌿 "${newCard.name}" saved locally! Cloud sync will retry.`);
+        }
       } else {
         // Track guest trial scan used
         const nextCount = guestScansUsed + 1;
@@ -751,6 +781,49 @@ export default function App() {
     }
   };
 
+  // Manual on-demand cloud sync
+  const handleManualCloudSync = async () => {
+    if (!user) {
+      setAuthOpen(true);
+      return;
+    }
+    soundEngine.playBeep(920, 0.04);
+    setIsSyncingCloud(true);
+    setToast('🔄 Syncing discoveries with cloud...');
+    try {
+      // Upload any local cards that haven't reached cloud yet
+      const localCards = await getStoredCards();
+      for (const c of localCards) {
+        if (!c.userId || c.userId === user.uid) {
+          const cardToSync = { ...c, userId: user.uid };
+          await syncCardToCloud(user.uid, cardToSync);
+        }
+      }
+
+      const cloudCards = await fetchCardsFromCloud(user.uid);
+      if (cloudCards.length > 0) {
+        for (const c of cloudCards) {
+          await saveCardToDB(c);
+        }
+        setCards((prev) => {
+          const map = new Map<string, Discovery>();
+          for (const card of prev) map.set(card.id, card);
+          for (const card of cloudCards) map.set(card.id, card);
+          return Array.from(map.values()).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+        });
+        soundEngine.playFanfare();
+        setToast(`✨ Cloud sync complete! All discoveries up to date.`);
+      } else {
+        setToast('Cloud sync complete: Dex is already up to date.');
+      }
+    } catch (err) {
+      console.warn('[Manual Sync Error]:', err);
+      setToast('Could not reach cloud database. Please retry in a moment.');
+    } finally {
+      setIsSyncingCloud(false);
+    }
+  };
+
   // Delete card from collection
   const handleDeleteCard = async (id: string, e: MouseEvent) => {
     e.stopPropagation();
@@ -815,6 +888,8 @@ export default function App() {
             cards={cards}
             sampleCards={SAMPLE_CARDS}
             user={user}
+            isSyncingCloud={isSyncingCloud}
+            onSyncWithCloud={handleManualCloudSync}
             onSelectCard={openCardDetail}
             onDeleteCard={handleDeleteCard}
             onGoToScanner={() => changeView('scanner')}
